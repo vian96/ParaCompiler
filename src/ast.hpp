@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <string_view>
 #include <vector>
 
 #include "visitor.hpp"
@@ -18,7 +17,7 @@ struct Node {
     void accept(Visitor::Visitor &v) override { v.visit(*this); }
 
 struct TypeSpec : Node {
-    std::string_view name;
+    std::string name;
     void *info = nullptr;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -38,14 +37,14 @@ struct Expr : Node {
 // --- STATEMENTS ---
 
 struct VarDecl : Statement {
-    std::string_view name;
+    std::string name;
     std::unique_ptr<TypeSpec> typeSpec;
     std::unique_ptr<Expr> val;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 
 struct Assignment : Statement {
-    std::string_view name;
+    std::string name;
     std::unique_ptr<Expr> val;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -68,7 +67,7 @@ struct IntLit : Expr {
 };
 
 struct Id : Expr {
-    std::string_view val;
+    std::string val;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 

@@ -16,8 +16,18 @@ class DefaultVisitor : public Visitor {
         if (node.val) node.val->accept(*this);
     }
 
-    // we don't visit abstract nodes directly in the AST,
-    // but if we do, just do nothing or cast.
+    void visit(AST::Assignment &node) override {
+        if (node.val) node.val->accept(*this);
+    }
+
+    void visit(AST::Print &node) override {
+        if (node.expr) node.expr->accept(*this);
+    }
+
+    void visit(AST::ExprStmt &node) override {
+        if (node.expr) node.expr->accept(*this);
+    }
+
     void visit(AST::Node &) override {}
     void visit(AST::Expr &) override {}
     void visit(AST::Statement &) override {}

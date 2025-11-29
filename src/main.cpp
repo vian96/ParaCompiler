@@ -1,18 +1,11 @@
 #include <fstream>
 #include <iostream>
 
-#include "antlr_parser.hpp"
 #include "antlr4-runtime.h"
-#include "default_visitor.hpp"  // Ensure you update DefaultVisitor with new methods!
+#include "antlr_parser.hpp"
+#include "dump_visitor.hpp"  // Include the new dump pass
 #include "generated/ParaCLLexer.h"
 #include "generated/ParaCLParser.h"
-
-// Updates for DefaultVisitor (Paste into default_visitor.hpp):
-/*
-  void visit(AST::Assignment &) override {}
-  void visit(AST::Print &) override {}
-  void visit(AST::ExprStmt &node) override { if(node.expr) node.expr->accept(*this); }
-*/
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -22,10 +15,11 @@ int main(int argc, char* argv[]) {
 
     std::ifstream stream(argv[1]);
     if (!stream) {
-        std::cerr << "File not found\n";
+        std::cerr << "File not found: " << argv[1] << "\n";
         return 1;
     }
 
+    // 1. ANTLR Parsing
     antlr4::ANTLRInputStream input(stream);
     ParaCLLexer lexer(&input);
     antlr4::CommonTokenStream tokens(&lexer);
@@ -33,11 +27,28 @@ int main(int argc, char* argv[]) {
 
     auto tree = parser.program();
 
+    // Check for syntax errors
+    if (parser.getNumberOfSyntaxErrors() > 0) {
+        std::cerr << "Syntax errors found. Aborting.\n";
+        return 1;
+    }
+
+    // 2. Build AST
     ParaCompiler::TreeBuilder builder;
     auto ast = builder.build(tree);
 
-    std::cout << "Successfully built AST with " << ast->statements.size()
-              << " statements.\n";
+    if (!ast) {
+        std::cerr << "Failed to build AST.\n";
+        return 1;
+    }
+
+    std::cout << "=== AST Structure ===\n";
+
+    // 3. Run Dump Pass
+    ParaCompiler::Visitor::DumpVisitor dumper;
+    ast->accept(dumper);
+
+    std::cout << "=====================\n";
 
     return 0;
 }
