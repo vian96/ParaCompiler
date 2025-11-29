@@ -1,0 +1,2 @@
+v0 : int = input(0);
+output(0, v0);
