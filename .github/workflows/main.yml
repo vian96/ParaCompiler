@@ -29,17 +29,20 @@ jobs:
       run: |
         wget https://apt.llvm.org/llvm.sh
         chmod +x llvm.sh
-        # Ставим Clang 19 и инструменты
         sudo ./llvm.sh 19
         sudo apt install -y clang-tools-19
 
-    - name: Setup Alternatives
+    - name: Force Clang 19 Symlinks
       run: |
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100
-        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100
+        echo "Removing old symlinks..."
+        sudo rm -f /usr/bin/clang /usr/bin/clang++ /usr/bin/clang-scan-deps
 
-        sudo update-alternatives --install /usr/bin/clang-scan-deps clang-scan-deps /usr/bin/clang-scan-deps-19 100
+        echo "Creating new symlinks to version 19..."
+        sudo ln -s /usr/bin/clang-19 /usr/bin/clang
+        sudo ln -s /usr/bin/clang++-19 /usr/bin/clang++
+        sudo ln -s /usr/bin/clang-scan-deps-19 /usr/bin/clang-scan-deps
 
+        echo "Verifying versions..."
         clang++ --version
         clang-scan-deps --version
 
