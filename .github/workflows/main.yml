@@ -35,16 +35,17 @@ jobs:
     - name: Force Clang 19 Symlinks
       run: |
         echo "Removing old symlinks..."
-        sudo rm -f /usr/bin/clang /usr/bin/clang++ /usr/bin/clang-scan-deps
+        sudo rm -f /usr/bin/clang /usr/bin/clang++ /usr/bin/clang-scan-deps /usr/bin/llvm-config
 
         echo "Creating new symlinks to version 19..."
         sudo ln -s /usr/bin/clang-19 /usr/bin/clang
         sudo ln -s /usr/bin/clang++-19 /usr/bin/clang++
         sudo ln -s /usr/bin/clang-scan-deps-19 /usr/bin/clang-scan-deps
+        sudo ln -s /usr/bin/llvm-config-19 /usr/bin/llvm-config
 
         echo "Verifying versions..."
         clang++ --version
-        clang-scan-deps --version
+        llvm-config --version
 
     - name: Setup ANTLR 4.9.3 JAR & Fix Paths
       run: |
@@ -62,6 +63,7 @@ jobs:
       run: |
         echo "v0 : int = 42; output(0, v0);" > ci_test.pcl
         make clean
+        export LLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm
         make config
         make build
 
