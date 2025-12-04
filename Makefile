@@ -12,7 +12,7 @@ test:
 	ctest --preset dev
 
 clean:
-	rm -rf build
+	rm -rf build src/generated
 
 run: build
 	./build/src/paracl $(ARGS)
