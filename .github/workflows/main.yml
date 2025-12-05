@@ -1,0 +1,74 @@
+name: ParaCompiler CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build-ubuntu-2204:
+    name: Build (Ubuntu 22.04)
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Base Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y wget lsb-release software-properties-common gnupg ninja-build default-jre libantlr4-runtime-dev make
+
+    - name: Install CMake 3.31
+      run: |
+        wget https://github.com/Kitware/CMake/releases/download/v3.31.0/cmake-3.31.0-linux-x86_64.sh
+        chmod +x cmake-3.31.0-linux-x86_64.sh
+        sudo ./cmake-3.31.0-linux-x86_64.sh --skip-license --prefix=/usr/local
+
+    - name: Install LLVM 19
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 19
+        sudo apt install -y clang-tools-19
+
+    - name: Force Clang 19 Symlinks
+      run: |
+        echo "Removing old symlinks..."
+        sudo rm -f /usr/bin/clang /usr/bin/clang++ /usr/bin/clang-scan-deps /usr/bin/llvm-config
+
+        echo "Creating new symlinks to version 19..."
+        sudo ln -s /usr/bin/clang-19 /usr/bin/clang
+        sudo ln -s /usr/bin/clang++-19 /usr/bin/clang++
+        sudo ln -s /usr/bin/clang-scan-deps-19 /usr/bin/clang-scan-deps
+        sudo ln -s /usr/bin/llvm-config-19 /usr/bin/llvm-config
+
+        echo "Verifying versions..."
+        clang++ --version
+        llvm-config --version
+
+    - name: Setup ANTLR 4.9.3 JAR & Fix Paths
+      run: |
+        sudo wget https://www.antlr.org/download/antlr-4.9.3-complete.jar -O /usr/local/lib/antlr-4.9.3-complete.jar
+
+        echo '#!/bin/bash' | sudo tee /usr/local/bin/antlr4
+        echo 'java -jar /usr/local/lib/antlr-4.9.3-complete.jar "$@"' | sudo tee -a /usr/local/bin/antlr4
+        sudo chmod +x /usr/local/bin/antlr4
+
+        # Delete Ubuntu broken configs
+        sudo rm -rf /usr/lib/x86_64-linux-gnu/cmake/antlr4-runtime
+        sudo rm -rf /usr/lib/cmake/antlr4-runtime
+
+    - name: Build
+      run: |
+        echo "v0 : int = 42; output(0, v0);" > ci_test.pcl
+        make clean
+        export LLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm
+        make config
+        make build
+
+    - name: Run Simple Test
+      run: ./build/src/paracl ci_test.pcl
+
+    - name: Run Unit Tests (CTest)
+      run: ctest --preset dev
