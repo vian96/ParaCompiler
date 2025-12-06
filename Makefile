@@ -17,4 +17,7 @@ clean:
 run: build
 	./build/src/paracl $(ARGS)
 
+test: build
+	./build/src/paracl ./test.pcl
+
 rebuild: clean config build
