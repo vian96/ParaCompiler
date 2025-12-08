@@ -19,7 +19,6 @@ GRAMMAR_FILE = "src/grammar/ParaCL.g4"
 
 BASE_GEN_DIR = "tests/gen"
 PCL_DIR = os.path.join(BASE_GEN_DIR, "pcl")
-EXPECT_DIR = os.path.join(BASE_GEN_DIR, "expected")
 CRASH_DIR = os.path.join(BASE_GEN_DIR, "crashes")
 
 logging.basicConfig(
@@ -31,7 +30,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 os.makedirs(PCL_DIR, exist_ok=True)
-os.makedirs(EXPECT_DIR, exist_ok=True)
 os.makedirs(CRASH_DIR, exist_ok=True)
 
 SEEN_HASHES: Set[str] = set()
@@ -189,12 +187,16 @@ def main() -> None:
 
         base_name = f"test_{int(time.time())}_{i}"
         pcl_path = os.path.join(PCL_DIR, f"{base_name}.pcl")
-        expect_path = os.path.join(EXPECT_DIR, f"{base_name}.expect")
+
+        check_lines = "\n".join([f"// CHECK: {line}" for line in expected_out.splitlines()])
+        lit_header = f"// RUN: %paracl %s | FileCheck %s\n"
 
         with open(pcl_path, "w") as f:
+            f.write(lit_header)
             f.write(pcl_code)
-        with open(expect_path, "w") as f:
-            f.write(expected_out)
+            f.write("\n\n")
+            f.write(check_lines)
+            f.write("\n")
 
         ret_code, err_msg = run_compiler_check(pcl_path)
 
@@ -209,8 +211,6 @@ def main() -> None:
 
                 if os.path.exists(pcl_path):
                     os.remove(pcl_path)
-                if os.path.exists(expect_path):
-                    os.remove(expect_path)
         else:
             logger.info(f"Saved valid test: {base_name}")
             SEEN_HASHES.add(code_hash)
