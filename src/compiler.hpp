@@ -1,5 +1,5 @@
 #include <ANTLRInputStream.h>
-#include <llvm-21/llvm/Support/raw_ostream.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include <deque>
 #include <istream>
