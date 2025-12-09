@@ -11,7 +11,6 @@
 #include "ast.hpp"
 #include "llvm_emitter.hpp"
 #include "symbol.hpp"
-#include "debug_print.hpp"
 
 namespace ParaCompiler {
 
