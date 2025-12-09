@@ -1,4 +1,4 @@
-.PHONY: all config build test clean run
+.PHONY: all config build test clean run test test_run
 
 all: build
 
