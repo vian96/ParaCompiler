@@ -1,57 +1,56 @@
-get_filename_component(WORKSPACE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
-set(LOCAL_ANTLR "${WORKSPACE_ROOT}/external/antlr4")
-set(LOCAL_LLVM  "${WORKSPACE_ROOT}/external/llvm-project")
+cmake_minimum_required(VERSION 3.28)
+project(ParaCL LANGUAGES CXX)
 
-find_package(LLVM REQUIRED CONFIG)
-message(STATUS "Found System LLVM ${LLVM_PACKAGE_VERSION}")
-
-list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
-include(AddLLVM)
-
-if(EXISTS "${LOCAL_LLVM}/llvm/include")
-    message(STATUS "Using Bleeding Edge LLVM Headers from ${LOCAL_LLVM}")
-    include_directories(BEFORE "${LOCAL_LLVM}/llvm/include")
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16.0)
+        message(FATAL_ERROR "CRITICAL: Clang version ${CMAKE_CXX_COMPILER_VERSION} is too old. C++ Modules require Clang 16+ (Recommended: 18+).")
+    else()
+        message(STATUS "CHECK: Clang version ${CMAKE_CXX_COMPILER_VERSION} - OK")
+    endif()
 else()
-    include_directories(${LLVM_INCLUDE_DIRS})
+    message(WARNING "CHECK: You are not using Clang. C++ Modules support might be unstable.")
 endif()
 
-add_definitions(${LLVM_DEFINITIONS})
-link_directories(${LLVM_LIBRARY_DIRS})
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(EXISTS "${LOCAL_ANTLR}/runtime/Cpp/CMakeLists.txt")
-    message(STATUS "Building ANTLR Runtime from source (${LOCAL_ANTLR})")
+find_package(Java REQUIRED COMPONENTS Runtime)
+
+set(ANTLR_VERSION "4.13.1")
+set(ANTLR_JAR_PATH "${CMAKE_BINARY_DIR}/antlr-${ANTLR_VERSION}-complete.jar")
+
+if(NOT EXISTS "${ANTLR_JAR_PATH}")
+    message(STATUS "Downloading ANTLR4 Generator ${ANTLR_VERSION}...")
+    file(DOWNLOAD "https://www.antlr.org/download/antlr-${ANTLR_VERSION}-complete.jar" "${ANTLR_JAR_PATH}"
+        SHOW_PROGRESS
+    )
+endif()
+
+get_filename_component(WORKSPACE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+set(ANTLR4_LOCAL_ROOT "${WORKSPACE_ROOT}/external/antlr4")
+
+if(EXISTS "${ANTLR4_LOCAL_ROOT}/runtime/Cpp/CMakeLists.txt")
+    message(STATUS "CHECK: Found ANTLR4 runtime sources in ${ANTLR4_LOCAL_ROOT}")
 
     set(ANTLR4_INSTALL OFF CACHE BOOL "" FORCE)
     set(WITH_DEMO OFF CACHE BOOL "" FORCE)
     set(ANTLR_BUILD_CPP_TESTS OFF CACHE BOOL "" FORCE)
 
-    add_subdirectory("${LOCAL_ANTLR}/runtime/Cpp" "external/antlr4_runtime")
-
-    if(NOT TARGET antlr4_runtime)
-        add_library(antlr4_runtime ALIAS antlr4_static)
-    endif()
+    add_subdirectory("${ANTLR4_LOCAL_ROOT}/runtime/Cpp" "external/antlr4_runtime")
 else()
-    message(STATUS "Standard Mode: Searching for system ANTLR package...")
-    find_package(antlr4-runtime QUIET)
-    if (NOT antlr4-runtime_FOUND)
-        find_path(ANTLR4_INCLUDE_DIR "antlr4-runtime.h" PATH_SUFFIXES antlr4-runtime)
-        find_library(ANTLR4_LIBRARY NAMES antlr4-runtime)
-
-        if (ANTLR4_INCLUDE_DIR AND ANTLR4_LIBRARY)
-            message(STATUS "Found ANTLR headers: ${ANTLR4_INCLUDE_DIR}")
-            add_library(antlr4_runtime UNKNOWN IMPORTED)
-            set_target_properties(antlr4_runtime PROPERTIES
-                IMPORTED_LOCATION "${ANTLR4_LIBRARY}"
-                INTERFACE_INCLUDE_DIRECTORIES "${ANTLR4_INCLUDE_DIR}"
-            )
-        else()
-            message(FATAL_ERROR "ANTLR4 Runtime not found!")
-        endif()
-    else()
-        if(NOT TARGET antlr4_runtime)
-            add_library(antlr4_runtime ALIAS antlr4_runtime::antlr4_runtime)
-        endif()
-    endif()
+    message(FATAL_ERROR "CRITICAL: ANTLR4 sources not found at ${ANTLR4_LOCAL_ROOT}.\nDid you run 'repo sync' or clone the external dependency?")
 endif()
+
+find_package(LLVM REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "LLVM Libs: ${LLVM_LIBRARY_DIRS}")
+
+list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+include(AddLLVM)
+
+include_directories(${LLVM_INCLUDE_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
+link_directories(${LLVM_LIBRARY_DIRS})
 
 add_subdirectory(src)
