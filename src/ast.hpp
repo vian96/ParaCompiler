@@ -6,10 +6,6 @@
 
 #include "visitor.hpp"
 
-namespace ParaCompiler::Symbols {
-struct Symbol;
-}
-
 namespace ParaCompiler::AST {
 
 struct Node {
@@ -44,8 +40,6 @@ struct VarDecl : Statement {
     std::string name;
     std::unique_ptr<TypeSpec> typeSpec;
     std::unique_ptr<Expr> val;
-    Symbols::Symbol *sym;
-
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 
@@ -74,7 +68,6 @@ struct IntLit : Expr {
 
 struct Id : Expr {
     std::string val;
-    Symbols::Symbol *sym;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 

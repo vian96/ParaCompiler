@@ -1,4 +1,4 @@
-.PHONY: all config build test clean run test test_run
+.PHONY: all config build test clean run
 
 all: build
 
@@ -16,10 +16,5 @@ clean:
 
 run: build
 	./build/src/paracl $(ARGS)
-
-test_run: build
-	./build/src/paracl ./test.pcl
-
-test: test_run
 
 rebuild: clean config build
