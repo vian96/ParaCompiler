@@ -17,7 +17,7 @@ clean:
 run: build
 	./build/src/paracl $(ARGS)
 
-test_run: build
+test_run:
 	./build/src/paracl ./test.pcl
 
 test: test_run

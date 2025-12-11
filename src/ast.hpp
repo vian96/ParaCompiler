@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "visitor.hpp"
@@ -40,18 +41,12 @@ struct Expr : Node {
 
 // --- STATEMENTS ---
 
-struct VarDecl : Statement {
+struct Assignment : Statement {
     std::string name;
     std::unique_ptr<TypeSpec> typeSpec;
     std::unique_ptr<Expr> val;
     Symbols::Symbol *sym;
 
-    PARACOMPILER_AST_OVERRIDE_ACCEPT
-};
-
-struct Assignment : Statement {
-    std::string name;
-    std::unique_ptr<Expr> val;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 
@@ -66,6 +61,19 @@ struct ExprStmt : Statement {
 };
 
 // --- EXPRESSIONS ---
+
+struct UnaryExpr : Expr {
+    char op;
+    std::unique_ptr<Expr> expr;
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct BinExpr : Expr {
+    std::string op;
+    std::unique_ptr<Expr> left;
+    std::unique_ptr<Expr> right;
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
 
 struct IntLit : Expr {
     int64_t val;

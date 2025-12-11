@@ -5,18 +5,16 @@
 #include <misc/Interval.h>
 
 #include <cassert>
+#include <string_view>
 #include <unordered_map>
 
 #include "ast.hpp"
 #include "default_visitor.hpp"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/raw_ostream.h"
 
 namespace ParaCompiler::LLVMEmitter {
 
@@ -56,12 +54,21 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         builder.SetInsertPoint(entryBB);
     }
 
-    void visit(AST::VarDecl &node) override {
+    llvm::AllocaInst *create_alloca(Symbols::Symbol *sym, std::string_view name) {
         llvm::Function *parent_func = builder.GetInsertBlock()->getParent();
-        llvm::AllocaInst *alloca = create_entry_block_alloca(
-            parent_func, llvm::Type::getInt32Ty(ctx), node.name);
+        llvm::AllocaInst *alloca =
+            create_entry_block_alloca(parent_func, llvm::Type::getInt32Ty(ctx), name);
 
-        symbols.emplace(node.sym, alloca);
+        symbols.emplace(sym, alloca);
+        return alloca;
+    }
+
+    void visit(AST::Assignment &node) override {
+        llvm::AllocaInst *alloca = nullptr;
+        if (!symbols.contains(node.sym))
+            alloca = create_alloca(node.sym, node.name);
+        else
+            alloca = symbols[node.sym];
 
         if (node.val) {
             node.val->accept(*this);
