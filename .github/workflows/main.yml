@@ -61,7 +61,7 @@ jobs:
 
     - name: Build
       run: |
-        echo "v0 : int = 42; output(0, v0);" > ci_test.pcl
+        echo "v0 : int = input(0); v1 = v0+2*4-8*(v0*2+4); v1 = v1 >= 0; v2 : int; output(0, v0); output(0, v1>=0 && v0 <= 7 || v0 == 9);" > ci_test.pcl
         make clean
         export LLVM_DIR=/usr/lib/llvm-20/lib/cmake/llvm
         make config
