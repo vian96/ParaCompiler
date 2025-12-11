@@ -3,6 +3,7 @@
 #include <any>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #include "ParaCLBaseVisitor.h"
@@ -67,6 +68,8 @@ class TreeBuilder : public ParaCLBaseVisitor {
     }
 
     Any visitOutput(ParaCLParser::OutputContext* ctx) override {
+        if (ctx->INT()->getText() != "0")
+            throw std::runtime_error("output only takes 0 as the first arg");
         auto* node = new AST::Print();
         node->expr = take<AST::Expr>(visit(ctx->expr()));
         return static_cast<AST::Node*>(node);
@@ -136,7 +139,9 @@ class TreeBuilder : public ParaCLBaseVisitor {
         return static_cast<AST::Node*>(node);
     }
 
-    Any visitInputExpr(ParaCLParser::InputExprContext*) override {
+    Any visitInputExpr(ParaCLParser::InputExprContext* ctx) override {
+        if (ctx->input()->INT()->getText() != "0")
+            throw std::runtime_error("output only takes 0 as the first arg");
         auto* node = new AST::Input();
         return static_cast<AST::Node*>(node);
     }

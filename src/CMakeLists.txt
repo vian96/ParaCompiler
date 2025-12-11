@@ -65,7 +65,6 @@ target_include_directories(paracl_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(paracl_core PUBLIC paracl_parser)
 
 # --- LLVM CONFIG ---
-# (Kept your manual config logic, though using LLVM::Core targets is preferred)
 find_program(LLVM_CONFIG_PATH "llvm-config" HINTS ${LLVM_TOOLS_BINARY_DIR})
 
 if(LLVM_CONFIG_PATH)

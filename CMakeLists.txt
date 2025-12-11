@@ -26,7 +26,6 @@ if(NOT EXISTS "${ANTLR_JAR_PATH}")
     message(STATUS "Downloading ANTLR4 Generator ${ANTLR_VERSION}...")
     file(DOWNLOAD "${ANTLR_JAR_URL}" "${ANTLR_JAR_PATH}"
         SHOW_PROGRESS
-        # Optional: Add EXPECTED_HASH SHA256=... for security if desired
     )
 endif()
 
@@ -49,7 +48,6 @@ FetchContent_MakeAvailable(antlr4_runtime)
 
 # --- 4. LLVM Setup ---
 find_package(LLVM REQUIRED CONFIG)
-# ... (rest of your LLVM setup remains unchanged) ...
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(AddLLVM)
 include_directories(${LLVM_INCLUDE_DIRS})

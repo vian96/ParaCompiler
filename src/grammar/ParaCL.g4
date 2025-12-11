@@ -9,7 +9,7 @@ statement
     ;
 
 assignment: ID typeSpec ('=' expr)? | ID '=' expr;
-output: 'output' '(' INT ',' expr ')';   // TODO: check for 0
+output: 'output' '(' INT ',' expr ')';
 
 expr
     : '(' expr ')' # BracketExpr
@@ -24,7 +24,7 @@ expr
     | expr '||' expr # OrExpr
     ;
 
-input: 'input' '(' INT ')';  // TODO: check for 0
+input: 'input' '(' INT ')';
 typeSpec: ':' 'int';
 
 INT: [0-9]+;  // TODO: are negative numbers required?
