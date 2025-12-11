@@ -1,9 +1,13 @@
-#include <llvm/IR/CmpPredicate.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/InstrTypes.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
-#include <misc/Interval.h>
+#include <llvm/IR/Verifier.h>
 
 #include <cassert>
 #include <stdexcept>
@@ -13,11 +17,6 @@
 
 #include "ast.hpp"
 #include "default_visitor.hpp"
-#include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Verifier.h"
 
 namespace ParaCompiler::LLVMEmitter {
 

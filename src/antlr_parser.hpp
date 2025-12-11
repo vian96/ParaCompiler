@@ -101,7 +101,6 @@ class TreeBuilder : public ParaCLBaseVisitor {
 
     template <typename T>
     Any visitBinaryT(T* ctx) {
-        std::cout << "binary " << ctx->getText() << '\n';
         auto* node = new AST::BinExpr();
         node->op = ctx->children[1]->getText();
         node->left = take<AST::Expr>(visit(ctx->expr()[0]));
