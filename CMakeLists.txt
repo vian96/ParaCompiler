@@ -11,30 +11,46 @@ else()
     message(WARNING "CHECK: You are not using Clang. C++ Modules support might be unstable.")
 endif()
 
-find_program(ANTLR_EXECUTABLE NAMES antlr4)
-if(ANTLR_EXECUTABLE)
-    execute_process(COMMAND ${ANTLR_EXECUTABLE}
-        OUTPUT_VARIABLE ANTLR_VER_OUTPUT
-        ERROR_VARIABLE ANTLR_VER_ERROR
-    )
-    string(REGEX MATCH "Version ([0-9]+\\.[0-9]+\\.[0-9]+)" _ ${ANTLR_VER_OUTPUT})
-    set(ANTLR_VERSION ${CMAKE_MATCH_1})
-
-    if(ANTLR_VERSION VERSION_LESS "4.8")
-        message(WARNING "CHECK: ANTLR version ${ANTLR_VERSION} is detected. Versions older than 4.9.3 are known to have C++ generation issues. Please upgrade.")
-    elseif(ANTLR_VERSION STREQUAL "")
-        message(STATUS "CHECK: Could not detect ANTLR version automatically (it's okay if build succeeds).")
-    else()
-        message(STATUS "CHECK: ANTLR version ${ANTLR_VERSION} - OK")
-    endif()
-endif()
-
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+find_package(Java REQUIRED COMPONENTS Runtime)
+
+set(ANTLR_VERSION "4.13.1")
+set(ANTLR_JAR_PATH "${CMAKE_BINARY_DIR}/antlr-${ANTLR_VERSION}-complete.jar")
+
+if(NOT EXISTS "${ANTLR_JAR_PATH}")
+    message(STATUS "Downloading ANTLR4 Generator ${ANTLR_VERSION}...")
+    file(DOWNLOAD "https://www.antlr.org/download/antlr-${ANTLR_VERSION}-complete.jar" "${ANTLR_JAR_PATH}"
+        SHOW_PROGRESS
+    )
+endif()
+
+get_filename_component(WORKSPACE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+set(ANTLR4_LOCAL_ROOT "${WORKSPACE_ROOT}/external/antlr4")
+
+if(EXISTS "${ANTLR4_LOCAL_ROOT}/runtime/Cpp/CMakeLists.txt")
+    message(STATUS "CHECK: Found ANTLR4 runtime sources in ${ANTLR4_LOCAL_ROOT}")
+
+    set(ANTLR4_INSTALL OFF CACHE BOOL "" FORCE)
+    set(WITH_DEMO OFF CACHE BOOL "" FORCE)
+    set(ANTLR_BUILD_CPP_TESTS OFF CACHE BOOL "" FORCE)
+
+    add_subdirectory("${ANTLR4_LOCAL_ROOT}/runtime/Cpp" "external/antlr4_runtime")
+else()
+    message(FATAL_ERROR "CRITICAL: ANTLR4 sources not found at ${ANTLR4_LOCAL_ROOT}.\nDid you run 'repo sync' or clone the external dependency?")
+endif()
+
 find_package(LLVM REQUIRED CONFIG)
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+if(${LLVM_PACKAGE_VERSION} VERSION_LESS 20.0)
+    message(FATAL_ERROR
+        "CRITICAL: Found LLVM ${LLVM_PACKAGE_VERSION}, but version 20.0+ is required. "
+        "Please install a newer LLVM or check your LLVM_DIR path."
+    )
+else()
+    message(STATUS "CHECK: LLVM version ${LLVM_PACKAGE_VERSION} - OK")
+endif()
 message(STATUS "LLVM Libs: ${LLVM_LIBRARY_DIRS}")
 
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
@@ -43,28 +59,5 @@ include(AddLLVM)
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 link_directories(${LLVM_LIBRARY_DIRS})
-
-find_package(antlr4-runtime QUIET)
-if (NOT antlr4-runtime_FOUND)
-    message(STATUS "Standard ANTLR package not found, searching manually...")
-    find_path(ANTLR4_INCLUDE_DIR "antlr4-runtime.h" PATH_SUFFIXES antlr4-runtime)
-    find_library(ANTLR4_LIBRARY NAMES antlr4-runtime)
-
-    if (ANTLR4_INCLUDE_DIR AND ANTLR4_LIBRARY)
-        message(STATUS "Found ANTLR headers: ${ANTLR4_INCLUDE_DIR}")
-        message(STATUS "Found ANTLR lib: ${ANTLR4_LIBRARY}")
-        add_library(antlr4_runtime UNKNOWN IMPORTED)
-        set_target_properties(antlr4_runtime PROPERTIES
-            IMPORTED_LOCATION "${ANTLR4_LIBRARY}"
-            INTERFACE_INCLUDE_DIRECTORIES "${ANTLR4_INCLUDE_DIR}"
-        )
-    else()
-        message(FATAL_ERROR "ANTLR4 Runtime not found!")
-    endif()
-else()
-    if(NOT TARGET antlr4_runtime)
-        add_library(antlr4_runtime ALIAS antlr4_runtime::antlr4_runtime)
-    endif()
-endif()
 
 add_subdirectory(src)

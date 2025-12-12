@@ -17,14 +17,20 @@ set(ANTLR_OUTPUTS
 
 add_custom_command(
     OUTPUT ${ANTLR_OUTPUTS}
-    COMMAND antlr4 -Dlanguage=Cpp -visitor -no-listener -o ${GEN_DIR} ${GRAMMAR_FILE}
-    DEPENDS ${GRAMMAR_FILE}
-    COMMENT "Generating ANTLR C++ parser..."
+    COMMAND ${Java_JAVA_EXECUTABLE} -jar ${ANTLR_JAR_PATH} -Dlanguage=Cpp -visitor -no-listener -o ${GEN_DIR} ${GRAMMAR_FILE}
+    DEPENDS ${GRAMMAR_FILE} ${ANTLR_JAR_PATH}
+    COMMENT "Generating ANTLR C++ parser (v${ANTLR_VERSION})..."
 )
 
 add_library(paracl_parser STATIC ${ANTLR_OUTPUTS})
 target_include_directories(paracl_parser PUBLIC ${GEN_DIR})
-target_link_libraries(paracl_parser PUBLIC antlr4_runtime)
+
+target_include_directories(paracl_parser PUBLIC 
+    "${WORKSPACE_ROOT}/external/antlr4/runtime/Cpp/runtime/src"
+)
+
+target_link_libraries(paracl_parser PUBLIC antlr4_static)
+
 target_compile_options(paracl_parser PRIVATE -frtti)
 
 set(CORE_HEADERS
