@@ -4,6 +4,7 @@
 #include <string_view>
 #include <unordered_map>
 
+#include "ast.hpp"
 #include "default_visitor.hpp"
 #include "visitor.hpp"
 
@@ -37,10 +38,9 @@ struct NameResolution : public Visitor::DefaultVisitor {
         return {nullptr, false};
     }
 
-    Symbol* add_symbol(std::string_view name) {
-        if (scopes.back().contains(name))
-            throw std::runtime_error(std::string(name) +
-                                     " was already defined in this scope");
+    Symbol* add_or_get_symbol(std::string_view name) {
+        if (auto it = scopes.back().find(name); it != scopes.back().end())
+            return it->second;
 
         symbols.push_back(name);
         scopes.back().emplace(name, &symbols.back());
@@ -55,8 +55,8 @@ struct NameResolution : public Visitor::DefaultVisitor {
             if (stmt) stmt->accept(*this);
     }
 
-    void visit(AST::VarDecl& node) override {
-        node.sym = add_symbol(node.name);
+    void visit(AST::Assignment& node) override {
+        node.sym = add_or_get_symbol(node.name);
         if (node.val) node.val->accept(*this);
     }
 

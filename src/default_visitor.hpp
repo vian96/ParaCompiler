@@ -12,11 +12,8 @@ class DefaultVisitor : public Visitor {
             if (stmt) stmt->accept(*this);
     }
 
-    void visit(AST::VarDecl &node) override {
-        if (node.val) node.val->accept(*this);
-    }
-
     void visit(AST::Assignment &node) override {
+        if (node.typeSpec) node.val->accept(*this);
         if (node.val) node.val->accept(*this);
     }
 
@@ -26,6 +23,15 @@ class DefaultVisitor : public Visitor {
 
     void visit(AST::ExprStmt &node) override {
         if (node.expr) node.expr->accept(*this);
+    }
+
+    void visit(AST::BinExpr &node) override {
+        node.left->accept(*this);
+        node.right->accept(*this);
+    }
+
+    void visit(AST::UnaryExpr &node) override {
+        node.expr->accept(*this);
     }
 
     void visit(AST::Node &) override {}
