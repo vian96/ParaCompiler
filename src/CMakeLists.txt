@@ -15,8 +15,6 @@ set(ANTLR_OUTPUTS
     ${GEN_DIR}/ParaCLBaseVisitor.h
 )
 
-# Generate C++ files
-# FIX: Use the specific JAR downloaded in root, executed via Java
 add_custom_command(
     OUTPUT ${ANTLR_OUTPUTS}
     COMMAND ${Java_JAVA_EXECUTABLE} -jar ${ANTLR_JAR_PATH} -Dlanguage=Cpp -visitor -no-listener -o ${GEN_DIR} ${GRAMMAR_FILE}
@@ -24,22 +22,13 @@ add_custom_command(
     COMMENT "Generating ANTLR C++ parser (v${ANTLR_VERSION})..."
 )
 
-# --- PARSER LIBRARY ---
 add_library(paracl_parser STATIC ${ANTLR_OUTPUTS})
-
 target_include_directories(paracl_parser PUBLIC ${GEN_DIR})
 
-# Fix for missing header files (FetchContent path)
-target_include_directories(paracl_parser PUBLIC 
-    "${antlr4_runtime_SOURCE_DIR}/runtime/Cpp/runtime/src"
-)
-
-# Link against the static runtime
 target_link_libraries(paracl_parser PUBLIC antlr4_static)
 
-target_compile_options(paracl_parser PRIVATE -frtti -w) 
+target_compile_options(paracl_parser PRIVATE -frtti)
 
-# --- CORE LIBRARY ---
 set(CORE_HEADERS
     ast.hpp
     visitor.hpp
@@ -62,28 +51,32 @@ if(MODULE_SOURCES)
 endif()
 
 target_include_directories(paracl_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
 target_link_libraries(paracl_core PUBLIC paracl_parser)
 
-# --- LLVM CONFIG ---
 find_program(LLVM_CONFIG_PATH "llvm-config" HINTS ${LLVM_TOOLS_BINARY_DIR})
 
 if(LLVM_CONFIG_PATH)
+    message(STATUS "Found llvm-config: ${LLVM_CONFIG_PATH}")
+
     execute_process(
         COMMAND ${LLVM_CONFIG_PATH} --link-shared --libs core support irreader target native
         OUTPUT_VARIABLE LLVM_LINK_LIBS
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+
     string(REPLACE "\n" " " LLVM_LINK_LIBS "${LLVM_LINK_LIBS}")
     string(STRIP "${LLVM_LINK_LIBS}" LLVM_LINK_LIBS)
+
     message(STATUS "LLVM Link Flags: ${LLVM_LINK_LIBS}")
 else()
-    message(FATAL_ERROR "llvm-config not found!")
+    message(FATAL_ERROR "llvm-config not found! Cannot determine link flags.")
 endif()
 
 target_link_libraries(paracl_core PUBLIC ${LLVM_LINK_LIBS})
+
 target_compile_options(paracl_core PRIVATE -frtti)
 
-# --- EXECUTABLE ---
 add_executable(paracl main.cpp)
 target_link_libraries(paracl PRIVATE paracl_core)
 target_compile_options(paracl PRIVATE -frtti)
