@@ -1,3 +1,7 @@
 v0 : int = input(0); // random comment test
 // random comment test v2
+v1 = v0+2*4-8*(v0*2+4);
+v1 = v1 >= 0;
+v2 : int;
 output(0, v0);
+output(0, v1>=0 && v0 <= 7 || v0 == 9);

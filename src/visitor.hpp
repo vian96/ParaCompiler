@@ -5,7 +5,8 @@ struct Node;
 struct Statement;
 struct Program;
 struct Expr;
-struct VarDecl;
+struct BinExpr;
+struct UnaryExpr;
 struct IntLit;
 struct Id;
 struct Input;
@@ -27,7 +28,8 @@ struct Visitor {
     virtual void visit(AST::TypeSpec &) = 0;
 
     virtual void visit(AST::Expr &) = 0;
-    virtual void visit(AST::VarDecl &) = 0;
+    virtual void visit(AST::BinExpr &) = 0;
+    virtual void visit(AST::UnaryExpr &) = 0;
     virtual void visit(AST::IntLit &) = 0;
     virtual void visit(AST::Id &) = 0;
     virtual void visit(AST::Input &) = 0;
