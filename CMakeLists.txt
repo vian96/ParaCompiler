@@ -43,7 +43,14 @@ else()
 endif()
 
 find_package(LLVM REQUIRED CONFIG)
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+if(${LLVM_PACKAGE_VERSION} VERSION_LESS 20.0)
+    message(FATAL_ERROR
+        "CRITICAL: Found LLVM ${LLVM_PACKAGE_VERSION}, but version 20.0+ is required. "
+        "Please install a newer LLVM or check your LLVM_DIR path."
+    )
+else()
+    message(STATUS "CHECK: LLVM version ${LLVM_PACKAGE_VERSION} - OK")
+endif()
 message(STATUS "LLVM Libs: ${LLVM_LIBRARY_DIRS}")
 
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
