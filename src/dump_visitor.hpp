@@ -29,21 +29,12 @@ class DumpVisitor : public Visitor {
     }
 
     // --- Statements ---
-    void visit(AST::VarDecl &node) override {
-        print_indent();
-        std::cout << "VarDecl [Name: " << node.name << "]\n";
-
-        indent_level++;
-        if (node.typeSpec) node.typeSpec->accept(*this);
-        if (node.val) node.val->accept(*this);
-        indent_level--;
-    }
-
     void visit(AST::Assignment &node) override {
         print_indent();
         std::cout << "Assignment [Name: " << node.name << "]\n";
 
         indent_level++;
+        if (node.typeSpec) node.typeSpec->accept(*this);
         if (node.val) node.val->accept(*this);
         indent_level--;
     }
@@ -67,6 +58,25 @@ class DumpVisitor : public Visitor {
     }
 
     // --- Expressions & Leaves ---
+    void visit(AST::BinExpr &node) override {
+        print_indent();
+        std::cout << "BinExpr [" << node.op << "]\n";
+
+        indent_level++;
+        node.left->accept(*this);
+        node.right->accept(*this);
+        indent_level--;
+    }
+
+    void visit(AST::UnaryExpr &node) override {
+        print_indent();
+        std::cout << "UnaryExpr [" << node.op << "]\n";
+
+        indent_level++;
+        node.expr->accept(*this);
+        indent_level--;
+    }
+
     void visit(AST::IntLit &node) override {
         print_indent();
         std::cout << "IntLit [" << node.val << "]\n";
