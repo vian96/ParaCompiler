@@ -42,6 +42,11 @@ class DefaultVisitor : public Visitor {
     void visit(AST::IntLit &) override {}
     void visit(AST::Id &) override {}
     void visit(AST::Input &) override {}
+
+    virtual void visit(AST::Block &) override {}
+    virtual void visit(AST::ForStmt &) override {}
+    virtual void visit(AST::WhileStmt &) override {}
+    virtual void visit(AST::IfStmt &) override {}
 };
 
 }  // namespace ParaCompiler::Visitor

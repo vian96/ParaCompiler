@@ -45,7 +45,7 @@ struct Compiler {
 
         LLVMEmitter::LLVMEmitterVisitor ir_emit;
         ir_emit.visit(*ast);
-        ir_emit.module.print(llvm::outs(), nullptr);
+        //ir_emit.module.print(llvm::outs(), nullptr);
         return true;
     }
 };
