@@ -116,6 +116,7 @@ struct ForStmt : Statement {
     std::unique_ptr<Id> container;
     std::vector<std::unique_ptr<Expr>> slice;
     std::unique_ptr<Block> body;
+    Symbols::Symbol *i_sym;
 
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };

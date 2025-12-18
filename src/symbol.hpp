@@ -1,3 +1,5 @@
+#pragma once
+
 #include <deque>
 #include <stdexcept>
 #include <string>
@@ -28,26 +30,23 @@ struct NameResolution : public Visitor::DefaultVisitor {
     std::vector<Scope> scopes;
     Symbol::ArenaType& symbols;
 
-    std::pair<Symbol*, bool> find_symbol(std::string_view name) {
-        auto it = scopes.rbegin();
-        if (auto sym = it->find(name); sym != it->end()) return {sym->second, true};
-
-        for (++it; it != scopes.rend(); ++it)
-            if (auto sym = it->find(name); sym != it->end()) return {sym->second, false};
-
-        return {nullptr, false};
-    }
-
     Symbol* add_or_get_symbol(std::string_view name) {
-        if (auto it = scopes.back().find(name); it != scopes.back().end())
-            return it->second;
+        for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+            if (auto sym = it->find(name); sym != it->end()) return sym->second;
 
-        symbols.push_back(name);
+        symbols.emplace_back(name);
         scopes.back().emplace(name, &symbols.back());
         return &symbols.back();
     }
 
     NameResolution(Symbol::ArenaType& symbols_) : symbols(symbols_) {}
+
+    void visit(AST::Block& node) override {
+        scopes.emplace_back();
+        for (const auto& stmt : node.statements)
+            if (stmt) stmt->accept(*this);
+        scopes.pop_back();
+    }
 
     void visit(AST::Program& p) override {
         scopes.emplace_back();
@@ -60,8 +59,17 @@ struct NameResolution : public Visitor::DefaultVisitor {
         if (node.val) node.val->accept(*this);
     }
 
+    void visit(AST::ForStmt& node) override {
+        scopes.emplace_back();
+        node.i_sym = add_or_get_symbol(node.id);
+        if (node.container) node.container->accept(*this);
+        for (auto& slice : node.slice) slice->accept(*this);
+        node.body->accept(*this);
+        scopes.pop_back();
+    }
+
     void visit(AST::Id& node) override {
-        auto sym = find_symbol(node.val).first;
+        auto sym = add_or_get_symbol(node.val);
         if (!sym) throw std::runtime_error("Unknown symbol used: " + node.val);
         node.sym = sym;
     }
