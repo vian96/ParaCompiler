@@ -13,22 +13,30 @@ struct Type {
     virtual ~Type() {}
 
     virtual operator std::string() const = 0;
+    virtual size_t get_width() const = 0;
 };
 
 struct IntType : Type {
     size_t width;
     IntType(size_t w) : width(w) {}
 
-    operator std::string() const override { return "intType(" + std::to_string(width) + ")"; }
+    operator std::string() const override {
+        return "intType(" + std::to_string(width) + ")";
+    }
+    virtual size_t get_width() const override { return width; }
 };
 
 struct BoolType : Type {
     operator std::string() const override { return "boolType"; }
+    virtual size_t get_width() const override { return 1; }
 };
 
 // for literals and inputs
 struct FlexibleType : Type {
     operator std::string() const override { return "flexType"; }
+    virtual size_t get_width() const override {
+        throw "unable to get width of flexible type!";
+    }
 };
 
 struct TypeManager {

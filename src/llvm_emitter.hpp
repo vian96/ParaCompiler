@@ -1,4 +1,7 @@
-#include <llvm-21/llvm/Support/raw_ostream.h>
+#pragma once
+
+#include <llvm/ADT/APInt.h>
+#include <llvm/ADT/SmallString.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
@@ -9,6 +12,7 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include <cassert>
 #include <stdexcept>
@@ -18,6 +22,7 @@
 
 #include "ast.hpp"
 #include "default_visitor.hpp"
+#include "symbol.hpp"
 #include "types.hpp"
 
 namespace ParaCompiler::LLVMEmitter {
@@ -32,7 +37,6 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     llvm::IRBuilder<> builder;
     llvm::Module module;
     llvm::Function *func;
-    // llvm::Type *int32Type;
     llvm::Value *last_value = nullptr;
 
     llvm::Value *get_last_value() {
@@ -56,13 +60,17 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
           builder(ctx),
           module("top", ctx),
           func(nullptr) {
-        llvm::FunctionType *inputFuncType =
-            llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), {}, false);
-        module.getOrInsertFunction("inputFunc", inputFuncType);
+        llvm::FunctionType *outft = llvm::FunctionType::get(
+            llvm::Type::getVoidTy(ctx),
+            {llvm::PointerType::getUnqual(ctx), llvm::Type::getInt32Ty(ctx)}, false);
+        llvm::Function::Create(outft, llvm::Function::ExternalLinkage, "pcl_output_int__",
+                               module);
 
-        llvm::FunctionType *outputFuncType = llvm::FunctionType::get(
-            llvm::Type::getVoidTy(ctx), {llvm::Type::getInt32Ty(ctx)}, false);
-        module.getOrInsertFunction("outputFunc", outputFuncType);
+        llvm::FunctionType *inft = llvm::FunctionType::get(
+            llvm::Type::getVoidTy(ctx),
+            {llvm::PointerType::getUnqual(ctx), llvm::Type::getInt32Ty(ctx)}, false);
+        llvm::Function::Create(inft, llvm::Function::ExternalLinkage, "pcl_input_int__",
+                               module);
 
         func = llvm::Function::Create(
             llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {}),
@@ -74,8 +82,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
 
     llvm::AllocaInst *create_alloca(Symbols::Symbol *sym, std::string_view name) {
         llvm::Function *parent_func = builder.GetInsertBlock()->getParent();
-        llvm::AllocaInst *alloca =
-            create_entry_block_alloca(parent_func, llvm::Type::getInt32Ty(ctx), name);
+        llvm::AllocaInst *alloca = create_entry_block_alloca(
+            parent_func, builder.getIntNTy(sym->type->get_width()), name);
 
         symbols.emplace(sym, alloca);
         return alloca;
@@ -147,23 +155,45 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     }
 
     void visit(AST::Id &node) override {
-        last_value =
-            builder.CreateLoad(llvm::Type::getInt32Ty(ctx), symbols.at(node.sym));
+        last_value = builder.CreateLoad(builder.getIntNTy(node.type->get_width()),
+                                        symbols.at(node.sym));
     }
 
-    void visit(AST::IntLit &node) override { last_value = builder.getInt32(node.val); }
+    void visit(AST::IntLit &node) override {
+        last_value = builder.getIntN(node.type->get_width(), node.val);
+    }
 
+    // TODO: add dynamic cast checks to input and output nodes
     void visit(AST::Input &node) override {
-        llvm::Function *func = module.getFunction("inputFunc");
-        assert(func);
-        last_value = builder.CreateCall(func, {});
+        size_t bit_width = node.type->get_width();
+        llvm::Function *func = builder.GetInsertBlock()->getParent();
+        llvm::AllocaInst *buffer =
+            create_entry_block_alloca(func, llvm::Type::getIntNTy(ctx, bit_width));
+
+        // pcl_input_int__(ptr %buffer, i32 %width)
+        llvm::Function *callee = module.getFunction("pcl_input_int__");
+        llvm::Value *width_val =
+            llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), bit_width);
+        builder.CreateCall(callee, {buffer, width_val});
+
+        last_value = builder.CreateLoad(llvm::Type::getIntNTy(ctx, bit_width), buffer,
+                                        "input_val");
     }
 
     void visit(AST::Print &node) override {
-        llvm::Function *func = module.getFunction("outputFunc");
-        assert(func);
+        size_t bit_width = node.expr->type->get_width();
+        llvm::Function *func = builder.GetInsertBlock()->getParent();
+        llvm::AllocaInst *buffer =
+            create_entry_block_alloca(func, llvm::Type::getIntNTy(ctx, bit_width));
+
         node.expr->accept(*this);
-        last_value = builder.CreateCall(func, {get_last_value()});
+        builder.CreateStore(get_last_value(), buffer);
+
+        // pcl_output_int__(ptr %buffer, i32 %width)
+        llvm::Function *callee = module.getFunction("pcl_output_int__");
+        llvm::Value *width_val =
+            llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), bit_width);
+        builder.CreateCall(callee, {buffer, width_val});
     }
 
     void visit(AST::IfStmt &node) override {
@@ -265,7 +295,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         node.slice[1]->accept(*this);
         llvm::Value *limit = get_last_value();
 
-        llvm::Value *iter_val = builder.CreateLoad(llvm::Type::getInt32Ty(ctx), alloca);
+        llvm::Value *iter_val =
+            builder.CreateLoad(builder.getIntNTy(node.i_sym->type->get_width()), alloca);
 
         llvm::Value *cond = builder.CreateICmpNE(iter_val, limit, "loop_cond");
         builder.CreateCondBr(cond, body_bb, merge_bb);
@@ -273,8 +304,10 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         builder.SetInsertPoint(body_bb);
         node.body->accept(*this);
 
-        llvm::Value *curr = builder.CreateLoad(llvm::Type::getInt32Ty(ctx), alloca);
-        llvm::Value *next = builder.CreateAdd(curr, builder.getInt32(1));
+        llvm::Value *curr =
+            builder.CreateLoad(builder.getIntNTy(node.i_sym->type->get_width()), alloca);
+        llvm::Value *next =
+            builder.CreateAdd(curr, builder.getIntN(node.i_sym->type->get_width(), 1));
         builder.CreateStore(next, alloca);
 
         // e.g. if block ends with return, adding 2 terminators is an error

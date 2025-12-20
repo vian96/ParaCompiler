@@ -114,6 +114,8 @@ class TreeBuilder : public ParaCLBaseVisitor {
     Any visitTypeSpec(ParaCLParser::TypeSpecContext* ctx) override {
         auto* node = new AST::TypeSpec();
         node->name = ctx->getText();
+        node->is_int = true;
+        node->int_width = ctx->INT() ? std::stoll(ctx->INT()->getText()) : 32;
         return static_cast<AST::Node*>(node);
     }
 

@@ -16,5 +16,10 @@ while (i < 7) {
 	output(0, i*i*i);
 	i = i+1;
 }
+v16 : int ( 16 ) = 123 * 4 + 45 + 789 + input(0);
+v32 = v16 *2 + 7;
+v64 :int(64)= v32*3 + v16 * 2 + input(0);
+output(0, v64+v32+7);
+v16 = input(0);
 output(0, v0);
 output(0, v1>=0 && v0 <= 7 || v0 == 9);

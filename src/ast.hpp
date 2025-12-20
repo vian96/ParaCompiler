@@ -86,6 +86,7 @@ struct BinExpr : Expr {
 };
 
 struct IntLit : Expr {
+    // TODO: compile time constants are max parsed 64 bits
     int64_t val;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };

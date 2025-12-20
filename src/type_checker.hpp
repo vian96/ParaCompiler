@@ -3,6 +3,7 @@
 #include <memory>
 #include <set>
 #include <stdexcept>
+#include <string>
 
 #include "ast.hpp"
 #include "default_visitor.hpp"
@@ -62,7 +63,10 @@ struct TypeChecker : Visitor::DefaultVisitor {
         auto comt = manager.get_common_type(node.sym->type, node.val->type);
         if (comt != node.sym->type)
             throw std::runtime_error(
-                "Error: conversion does not exist from expr to assignable variable!");
+                "Error: conversion does not exist from expr to assignable variable!"
+                "types are: " +
+                std::string(*node.sym->type) +
+                " for var and: " + std::string(*node.val->type) + " for expr");
         node.val = make_conversion_node_or_propagate(std::move(node.val), comt);
     }
 
@@ -140,7 +144,7 @@ struct TypeChecker : Visitor::DefaultVisitor {
         if (!is_arithop && !is_boolop) throw std::runtime_error("unknown op: " + node.op);
 
         // bool op on two inputs or intlit has to be regular int
-        if (is_arithop && comtype == manager.get_flexiblet())
+        if (is_boolop && comtype == manager.get_flexiblet())
             comtype = manager.get_intt();
 
         if (comtype != manager.get_flexiblet()) {
