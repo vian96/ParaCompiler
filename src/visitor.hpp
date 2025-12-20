@@ -18,6 +18,7 @@ struct Block;
 struct ForStmt;
 struct WhileStmt;
 struct IfStmt;
+struct Conversion;
 }  // namespace ParaCompiler::AST
 
 namespace ParaCompiler::Visitor {
@@ -37,6 +38,7 @@ struct Visitor {
     virtual void visit(AST::IntLit &) = 0;
     virtual void visit(AST::Id &) = 0;
     virtual void visit(AST::Input &) = 0;
+    virtual void visit(AST::Conversion &) = 0;
 
     virtual void visit(AST::Assignment &) = 0;
     virtual void visit(AST::Print &) = 0;

@@ -1,8 +1,11 @@
 #pragma once
 
 #include <iostream>
+#include <memory>
 
 #include "ast.hpp"
+#include "symbol.hpp"
+#include "types.hpp"
 #include "visitor.hpp"
 
 namespace ParaCompiler::Visitor {
@@ -14,6 +17,10 @@ class DumpVisitor : public Visitor {
         for (int i = 0; i < indent_level; ++i) std::cout << "  |";
 
         if (indent_level > 0) std::cout << "-- ";
+    }
+
+    std::string type_to_str(const Types::Type *t) {
+        return t ? std::string(*t) : "nullType";
     }
 
    public:
@@ -31,7 +38,8 @@ class DumpVisitor : public Visitor {
     // --- Statements ---
     void visit(AST::Assignment &node) override {
         print_indent();
-        std::cout << "Assignment [Name: " << node.name << "]\n";
+        std::cout << "Assignment type: [" << type_to_str(node.sym->type)
+                  << "] [Name: " << node.name << "]\n";
 
         indent_level++;
         if (node.typeSpec) node.typeSpec->accept(*this);
@@ -42,6 +50,15 @@ class DumpVisitor : public Visitor {
     void visit(AST::Print &node) override {
         print_indent();
         std::cout << "Output\n";
+
+        indent_level++;
+        if (node.expr) node.expr->accept(*this);
+        indent_level--;
+    }
+
+    void visit(AST::Conversion &node) override {
+        print_indent();
+        std::cout << "Conversion to [" << type_to_str(node.type) << "]\n";
 
         indent_level++;
         if (node.expr) node.expr->accept(*this);
@@ -60,7 +77,8 @@ class DumpVisitor : public Visitor {
     // --- Expressions & Leaves ---
     void visit(AST::BinExpr &node) override {
         print_indent();
-        std::cout << "BinExpr [" << node.op << "]\n";
+        std::cout << "BinExpr type: [" << type_to_str(node.type) << "] [" << node.op
+                  << "]\n";
 
         indent_level++;
         node.left->accept(*this);
@@ -70,7 +88,8 @@ class DumpVisitor : public Visitor {
 
     void visit(AST::UnaryExpr &node) override {
         print_indent();
-        std::cout << "UnaryExpr [" << node.op << "]\n";
+        std::cout << "UnaryExpr type: [" << type_to_str(node.type) << "] [" << node.op
+                  << "]\n";
 
         indent_level++;
         node.expr->accept(*this);
@@ -79,17 +98,18 @@ class DumpVisitor : public Visitor {
 
     void visit(AST::IntLit &node) override {
         print_indent();
-        std::cout << "IntLit [" << node.val << "]\n";
+        std::cout << "IntLit type: [" << type_to_str(node.type) << "] [" << node.val
+                  << "]\n";
     }
 
     void visit(AST::Id &node) override {
         print_indent();
-        std::cout << "Id [" << node.val << "]\n";
+        std::cout << "Id type: [" << type_to_str(node.type) << "] [" << node.val << "]\n";
     }
 
-    void visit(AST::Input &) override {
+    void visit(AST::Input &node) override {
         print_indent();
-        std::cout << "InputExpr\n";
+        std::cout << "InputExpr type: [" << type_to_str(node.type) << "]\n";
     }
 
     void visit(AST::TypeSpec &node) override {
@@ -116,8 +136,9 @@ class DumpVisitor : public Visitor {
         print_indent();
         if (node.slice.size()) {
             std::cout << "Slice [\n";
-            for (auto &slice : node.slice)
-                slice->accept(*this);
+            indent_level++;
+            for (auto &slice : node.slice) slice->accept(*this);
+            indent_level--;
             print_indent();
             std::cout << "]\n";
         } else {
@@ -142,17 +163,23 @@ class DumpVisitor : public Visitor {
         indent_level++;
         node.expr->accept(*this);
         node.trueb->accept(*this);
-        if (node.falseb)
-            node.falseb->accept(*this);
+        if (node.falseb) node.falseb->accept(*this);
         indent_level--;
     }
 
-    // --- Unused/Abstract ---
-    // These shouldn't be called directly in a valid AST,
-    // but must be implemented.
-    void visit(AST::Node &) override {}
-    void visit(AST::Statement &) override {}
-    void visit(AST::Expr &) override {}
+    // --- Abstract ---
+    void visit(AST::Node &) override {
+        print_indent();
+        std::cout << "Empty Node!\n";
+    }
+    void visit(AST::Statement &) override {
+        print_indent();
+        std::cout << "Empty Stmnt!\n";
+    }
+    void visit(AST::Expr &) override {
+        print_indent();
+        std::cout << "Empty Expr!\n";
+    }
 };
 
 }  // namespace ParaCompiler::Visitor

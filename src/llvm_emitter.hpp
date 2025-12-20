@@ -1,3 +1,4 @@
+#include <llvm-21/llvm/Support/raw_ostream.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
@@ -17,6 +18,7 @@
 
 #include "ast.hpp"
 #include "default_visitor.hpp"
+#include "types.hpp"
 
 namespace ParaCompiler::LLVMEmitter {
 
@@ -24,6 +26,7 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     using DefaultVisitor::visit;
 
     std::unordered_map<Symbols::Symbol *, llvm::AllocaInst *> symbols;
+    Types::TypeManager &type_manager;
 
     llvm::LLVMContext ctx;
     llvm::IRBuilder<> builder;
@@ -47,7 +50,12 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         return tmp_builder.CreateAlloca(type, nullptr, name);
     }
 
-    LLVMEmitterVisitor() : ctx(), builder(ctx), module("top", ctx), func(nullptr) {
+    LLVMEmitterVisitor(Types::TypeManager &type_manager_)
+        : type_manager(type_manager_),
+          ctx(),
+          builder(ctx),
+          module("top", ctx),
+          func(nullptr) {
         llvm::FunctionType *inputFuncType =
             llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), {}, false);
         module.getOrInsertFunction("inputFunc", inputFuncType);
@@ -80,8 +88,10 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         if (builder.GetInsertBlock() && !builder.GetInsertBlock()->getTerminator())
             builder.CreateRetVoid();
 
-        if (llvm::verifyModule(module, &llvm::errs()))
+        if (llvm::verifyModule(module, &llvm::errs())) {
+            module.print(llvm::errs(), nullptr);
             throw std::runtime_error("Invalid LLVM IR generated");
+        }
     }
 
     void visit(AST::Assignment &node) override {
@@ -119,7 +129,6 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         else if (node.op == "/")
             last_value = builder.CreateSDiv(left, right);  // TODO: is it right op?
         // TODO: is logical operation optimization needed?
-        // also need to change it to logical and once typing would be done
         else if (node.op == "&&")
             last_value = builder.CreateAnd(left, right);
         else if (node.op == "||")
@@ -131,10 +140,7 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
                 {"!=", llvm::ICmpInst::ICMP_NE},  {"==", llvm::ICmpInst::ICMP_EQ},
             };
             if (auto it = cmps.find(node.op); it != cmps.end())
-                // TODO: remove zext once typing is done
-                last_value =
-                    builder.CreateZExt(builder.CreateICmp(it->second, left, right),
-                                       llvm::Type::getInt32Ty(ctx));
+                last_value = builder.CreateICmp(it->second, left, right);
             else
                 throw std::runtime_error("unknown binop " + node.op);
         }
@@ -164,11 +170,6 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         node.expr->accept(*this);
         llvm::Value *cond = get_last_value();
 
-        // TODO: must be done in type checker, remove once it's created
-        if (cond->getType()->getIntegerBitWidth() != 1)
-            cond = builder.CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0),
-                                        "to_bool");
-
         llvm::Function *func = builder.GetInsertBlock()->getParent();
         llvm::BasicBlock *then_bb = llvm::BasicBlock::Create(ctx, "if.then", func);
         llvm::BasicBlock *else_bb = llvm::BasicBlock::Create(ctx, "if.else");
@@ -191,6 +192,29 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
 
         func->insert(func->end(), merge_bb);
         builder.SetInsertPoint(merge_bb);
+    }
+
+    void visit(AST::Conversion &node) override {
+        if (node.type == type_manager.get_flexiblet())
+            throw std::runtime_error("unexpected flexType");
+        node.expr->accept(*this);
+        auto expr = get_last_value();
+        if (node.type == type_manager.get_boolt()) {
+            last_value = builder.CreateICmpNE(
+                expr, llvm::ConstantInt::get(expr->getType(), 0), "to_bool");
+            return;
+        }
+
+        // to int
+        auto to_intt = dynamic_cast<const Types::IntType *>(node.type);
+        assert(to_intt);
+        if (node.expr->type == type_manager.get_boolt()) {
+            last_value =
+                builder.CreateZExt(expr, llvm::Type::getIntNTy(ctx, to_intt->width));
+            return;
+        }
+        // both ints
+        last_value = builder.CreateSExt(expr, llvm::Type::getIntNTy(ctx, to_intt->width));
     }
 
     void visit(AST::WhileStmt &node) override {

@@ -21,6 +21,10 @@ class DefaultVisitor : public Visitor {
         if (node.expr) node.expr->accept(*this);
     }
 
+    void visit(AST::Conversion &node) override {
+        if (node.expr) node.expr->accept(*this);
+    }
+
     void visit(AST::ExprStmt &node) override {
         if (node.expr) node.expr->accept(*this);
     }
