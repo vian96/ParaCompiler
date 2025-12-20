@@ -75,7 +75,7 @@ struct TypeChecker : Visitor::DefaultVisitor {
         node.expr =
             make_conversion_node_or_propagate(std::move(node.expr), manager.get_boolt());
         node.trueb->accept(*this);
-        node.falseb->accept(*this);
+        if (node.falseb) node.falseb->accept(*this);
     }
 
     void visit(AST::WhileStmt &node) override {
@@ -134,7 +134,7 @@ struct TypeChecker : Visitor::DefaultVisitor {
 
         // is there way to make it constexpr static?
         std::set<std::string> arithop = {"+", "-", "*", "/", "&&", "||"};
-        std::set<std::string> boolop = {"<", ">", "==", "<=", ">="};
+        std::set<std::string> boolop = {"<", ">", "==", "<=", ">=", "!="};
 
         // TODO: not always common type
         auto comtype = manager.get_common_type(node.left->type, node.right->type);
