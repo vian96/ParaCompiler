@@ -48,9 +48,6 @@ struct Compiler {
         Types::TypeChecker typecheck(type_manager);
         ast->accept(typecheck);
 
-        ParaCompiler::Visitor::DumpVisitor dumper;
-        ast->accept(dumper);
-
         LLVMEmitter::LLVMEmitterVisitor ir_emit(type_manager);
         ir_emit.visit(*ast);
         ir_emit.module.print(llvm::outs(), nullptr);

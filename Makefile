@@ -15,10 +15,10 @@ clean:
 	rm -rf build src/generated
 
 run: build
-	./build/src/paracl $(ARGS)
+	./build/src/paracl $(ARGS) | lli -load=./build/src/libparastdlib.so
 
 test_run:
-	./build/src/paracl ./test.pcl
+	./build/src/paracl ./test.pcl --dump-ast
 
 test: test_run
 
