@@ -1,7 +1,6 @@
 #include <ANTLRInputStream.h>
 #include <llvm/Support/raw_ostream.h>
 
-#include <deque>
 #include <istream>
 #include <memory>
 
@@ -9,14 +8,17 @@
 #include "ParaCLParser.h"
 #include "antlr_parser.hpp"
 #include "ast.hpp"
+#include "dump_visitor.hpp"
 #include "llvm_emitter.hpp"
 #include "symbol.hpp"
+#include "type_checker.hpp"
 
 namespace ParaCompiler {
 
 struct Compiler {
     std::unique_ptr<AST::Program> ast = nullptr;
     Symbols::Symbol::ArenaType symbols;
+    Types::TypeManager type_manager;
 
     Compiler() {}
     Compiler(std::istream &stream) { compile_tu(stream); }
@@ -43,7 +45,13 @@ struct Compiler {
         Symbols::NameResolution name_res(symbols);
         name_res.visit(*ast);
 
-        LLVMEmitter::LLVMEmitterVisitor ir_emit;
+        Types::TypeChecker typecheck(type_manager);
+        ast->accept(typecheck);
+
+        ParaCompiler::Visitor::DumpVisitor dumper;
+        ast->accept(dumper);
+
+        LLVMEmitter::LLVMEmitterVisitor ir_emit(type_manager);
         ir_emit.visit(*ast);
         ir_emit.module.print(llvm::outs(), nullptr);
         return true;

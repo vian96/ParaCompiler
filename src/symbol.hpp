@@ -8,6 +8,7 @@
 
 #include "ast.hpp"
 #include "default_visitor.hpp"
+#include "types.hpp"
 #include "visitor.hpp"
 
 namespace ParaCompiler::Symbols {
@@ -18,8 +19,8 @@ struct Symbol {
 
     using ArenaType = std::deque<Symbols::Symbol>;
     NameType name;
-    void* type;
-    AST::Statement* def;
+    const Types::Type* type = nullptr;
+    AST::Statement* def = nullptr;
 
     Symbol(std::string_view name_) : name(name_) {}
 };

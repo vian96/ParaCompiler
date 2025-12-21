@@ -33,7 +33,7 @@ expr
     ;
 
 input: 'input' '(' INT ')';
-typeSpec: ':' 'int';
+typeSpec: ':' 'int' ('(' INT ')')?;
 
 INT: [0-9]+;  // TODO: are negative numbers required?
 ID: [a-zA-Z_][a-zA-Z0-9_]*;

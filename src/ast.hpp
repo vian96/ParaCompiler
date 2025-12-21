@@ -1,11 +1,13 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "types.hpp"
 #include "visitor.hpp"
 
 namespace ParaCompiler::Symbols {
@@ -24,7 +26,9 @@ struct Node {
 
 struct TypeSpec : Node {
     std::string name;
-    void *info = nullptr;
+    bool is_int = true;  // TODO: make acutal check
+    size_t int_width = 32;
+
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 
@@ -36,7 +40,8 @@ struct Program : Node {
 };
 
 struct Expr : Node {
-    void *type = nullptr;
+    const Types::Type *type = nullptr;
+
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 
@@ -49,9 +54,9 @@ struct Block : Node {
 
 struct Assignment : Statement {
     std::string name;
-    std::unique_ptr<TypeSpec> typeSpec;
-    std::unique_ptr<Expr> val;
-    Symbols::Symbol *sym;
+    std::unique_ptr<TypeSpec> typeSpec = nullptr;
+    std::unique_ptr<Expr> val = nullptr;
+    Symbols::Symbol *sym = nullptr;
 
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -75,13 +80,14 @@ struct UnaryExpr : Expr {
 };
 
 struct BinExpr : Expr {
-    std::string op;
+    std::string op;  // possible are +,-,*,/,&&,||,<,>,==,<=,>=
     std::unique_ptr<Expr> left;
     std::unique_ptr<Expr> right;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 
 struct IntLit : Expr {
+    // TODO: compile time constants are max parsed 64 bits
     int64_t val;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -117,6 +123,17 @@ struct ForStmt : Statement {
     std::vector<std::unique_ptr<Expr>> slice;
     std::unique_ptr<Block> body;
     Symbols::Symbol *i_sym;
+
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct Conversion : Expr {
+    std::unique_ptr<Expr> expr;
+
+    Conversion(std::unique_ptr<Expr> expr_, const Types::Type *res_type_)
+        : expr(std::move(expr_)) {
+        type = res_type_;
+    }
 
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };

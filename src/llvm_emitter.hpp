@@ -1,3 +1,7 @@
+#pragma once
+
+#include <llvm/ADT/APInt.h>
+#include <llvm/ADT/SmallString.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
@@ -8,6 +12,7 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include <cassert>
 #include <stdexcept>
@@ -17,6 +22,8 @@
 
 #include "ast.hpp"
 #include "default_visitor.hpp"
+#include "symbol.hpp"
+#include "types.hpp"
 
 namespace ParaCompiler::LLVMEmitter {
 
@@ -24,12 +31,12 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     using DefaultVisitor::visit;
 
     std::unordered_map<Symbols::Symbol *, llvm::AllocaInst *> symbols;
+    Types::TypeManager &type_manager;
 
     llvm::LLVMContext ctx;
     llvm::IRBuilder<> builder;
     llvm::Module module;
     llvm::Function *func;
-    // llvm::Type *int32Type;
     llvm::Value *last_value = nullptr;
 
     llvm::Value *get_last_value() {
@@ -47,14 +54,23 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         return tmp_builder.CreateAlloca(type, nullptr, name);
     }
 
-    LLVMEmitterVisitor() : ctx(), builder(ctx), module("top", ctx), func(nullptr) {
-        llvm::FunctionType *inputFuncType =
-            llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), {}, false);
-        module.getOrInsertFunction("inputFunc", inputFuncType);
+    LLVMEmitterVisitor(Types::TypeManager &type_manager_)
+        : type_manager(type_manager_),
+          ctx(),
+          builder(ctx),
+          module("top", ctx),
+          func(nullptr) {
+        llvm::FunctionType *outft = llvm::FunctionType::get(
+            llvm::Type::getVoidTy(ctx),
+            {llvm::PointerType::getUnqual(ctx), llvm::Type::getInt32Ty(ctx)}, false);
+        llvm::Function::Create(outft, llvm::Function::ExternalLinkage, "pcl_output_int__",
+                               module);
 
-        llvm::FunctionType *outputFuncType = llvm::FunctionType::get(
-            llvm::Type::getVoidTy(ctx), {llvm::Type::getInt32Ty(ctx)}, false);
-        module.getOrInsertFunction("outputFunc", outputFuncType);
+        llvm::FunctionType *inft = llvm::FunctionType::get(
+            llvm::Type::getVoidTy(ctx),
+            {llvm::PointerType::getUnqual(ctx), llvm::Type::getInt32Ty(ctx)}, false);
+        llvm::Function::Create(inft, llvm::Function::ExternalLinkage, "pcl_input_int__",
+                               module);
 
         func = llvm::Function::Create(
             llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {}),
@@ -66,8 +82,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
 
     llvm::AllocaInst *create_alloca(Symbols::Symbol *sym, std::string_view name) {
         llvm::Function *parent_func = builder.GetInsertBlock()->getParent();
-        llvm::AllocaInst *alloca =
-            create_entry_block_alloca(parent_func, llvm::Type::getInt32Ty(ctx), name);
+        llvm::AllocaInst *alloca = create_entry_block_alloca(
+            parent_func, builder.getIntNTy(sym->type->get_width()), name);
 
         symbols.emplace(sym, alloca);
         return alloca;
@@ -80,8 +96,10 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         if (builder.GetInsertBlock() && !builder.GetInsertBlock()->getTerminator())
             builder.CreateRetVoid();
 
-        if (llvm::verifyModule(module, &llvm::errs()))
+        if (llvm::verifyModule(module, &llvm::errs())) {
+            module.print(llvm::errs(), nullptr);
             throw std::runtime_error("Invalid LLVM IR generated");
+        }
     }
 
     void visit(AST::Assignment &node) override {
@@ -119,7 +137,6 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         else if (node.op == "/")
             last_value = builder.CreateSDiv(left, right);  // TODO: is it right op?
         // TODO: is logical operation optimization needed?
-        // also need to change it to logical and once typing would be done
         else if (node.op == "&&")
             last_value = builder.CreateAnd(left, right);
         else if (node.op == "||")
@@ -131,43 +148,57 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
                 {"!=", llvm::ICmpInst::ICMP_NE},  {"==", llvm::ICmpInst::ICMP_EQ},
             };
             if (auto it = cmps.find(node.op); it != cmps.end())
-                // TODO: remove zext once typing is done
-                last_value =
-                    builder.CreateZExt(builder.CreateICmp(it->second, left, right),
-                                       llvm::Type::getInt32Ty(ctx));
+                last_value = builder.CreateICmp(it->second, left, right);
             else
                 throw std::runtime_error("unknown binop " + node.op);
         }
     }
 
     void visit(AST::Id &node) override {
-        last_value =
-            builder.CreateLoad(llvm::Type::getInt32Ty(ctx), symbols.at(node.sym));
+        last_value = builder.CreateLoad(builder.getIntNTy(node.type->get_width()),
+                                        symbols.at(node.sym));
     }
 
-    void visit(AST::IntLit &node) override { last_value = builder.getInt32(node.val); }
+    void visit(AST::IntLit &node) override {
+        last_value = builder.getIntN(node.type->get_width(), node.val);
+    }
 
+    // TODO: add dynamic cast checks to input and output nodes
     void visit(AST::Input &node) override {
-        llvm::Function *func = module.getFunction("inputFunc");
-        assert(func);
-        last_value = builder.CreateCall(func, {});
+        size_t bit_width = node.type->get_width();
+        llvm::Function *func = builder.GetInsertBlock()->getParent();
+        llvm::AllocaInst *buffer =
+            create_entry_block_alloca(func, llvm::Type::getIntNTy(ctx, bit_width));
+
+        // pcl_input_int__(ptr %buffer, i32 %width)
+        llvm::Function *callee = module.getFunction("pcl_input_int__");
+        llvm::Value *width_val =
+            llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), bit_width);
+        builder.CreateCall(callee, {buffer, width_val});
+
+        last_value = builder.CreateLoad(llvm::Type::getIntNTy(ctx, bit_width), buffer,
+                                        "input_val");
     }
 
     void visit(AST::Print &node) override {
-        llvm::Function *func = module.getFunction("outputFunc");
-        assert(func);
+        size_t bit_width = node.expr->type->get_width();
+        llvm::Function *func = builder.GetInsertBlock()->getParent();
+        llvm::AllocaInst *buffer =
+            create_entry_block_alloca(func, llvm::Type::getIntNTy(ctx, bit_width));
+
         node.expr->accept(*this);
-        last_value = builder.CreateCall(func, {get_last_value()});
+        builder.CreateStore(get_last_value(), buffer);
+
+        // pcl_output_int__(ptr %buffer, i32 %width)
+        llvm::Function *callee = module.getFunction("pcl_output_int__");
+        llvm::Value *width_val =
+            llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), bit_width);
+        builder.CreateCall(callee, {buffer, width_val});
     }
 
     void visit(AST::IfStmt &node) override {
         node.expr->accept(*this);
         llvm::Value *cond = get_last_value();
-
-        // TODO: must be done in type checker, remove once it's created
-        if (cond->getType()->getIntegerBitWidth() != 1)
-            cond = builder.CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0),
-                                        "to_bool");
 
         llvm::Function *func = builder.GetInsertBlock()->getParent();
         llvm::BasicBlock *then_bb = llvm::BasicBlock::Create(ctx, "if.then", func);
@@ -191,6 +222,29 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
 
         func->insert(func->end(), merge_bb);
         builder.SetInsertPoint(merge_bb);
+    }
+
+    void visit(AST::Conversion &node) override {
+        if (node.type == type_manager.get_flexiblet())
+            throw std::runtime_error("unexpected flexType");
+        node.expr->accept(*this);
+        auto expr = get_last_value();
+        if (node.type == type_manager.get_boolt()) {
+            last_value = builder.CreateICmpNE(
+                expr, llvm::ConstantInt::get(expr->getType(), 0), "to_bool");
+            return;
+        }
+
+        // to int
+        auto to_intt = dynamic_cast<const Types::IntType *>(node.type);
+        assert(to_intt);
+        if (node.expr->type == type_manager.get_boolt()) {
+            last_value =
+                builder.CreateZExt(expr, llvm::Type::getIntNTy(ctx, to_intt->width));
+            return;
+        }
+        // both ints
+        last_value = builder.CreateSExt(expr, llvm::Type::getIntNTy(ctx, to_intt->width));
     }
 
     void visit(AST::WhileStmt &node) override {
@@ -241,7 +295,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         node.slice[1]->accept(*this);
         llvm::Value *limit = get_last_value();
 
-        llvm::Value *iter_val = builder.CreateLoad(llvm::Type::getInt32Ty(ctx), alloca);
+        llvm::Value *iter_val =
+            builder.CreateLoad(builder.getIntNTy(node.i_sym->type->get_width()), alloca);
 
         llvm::Value *cond = builder.CreateICmpNE(iter_val, limit, "loop_cond");
         builder.CreateCondBr(cond, body_bb, merge_bb);
@@ -249,8 +304,10 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         builder.SetInsertPoint(body_bb);
         node.body->accept(*this);
 
-        llvm::Value *curr = builder.CreateLoad(llvm::Type::getInt32Ty(ctx), alloca);
-        llvm::Value *next = builder.CreateAdd(curr, builder.getInt32(1));
+        llvm::Value *curr =
+            builder.CreateLoad(builder.getIntNTy(node.i_sym->type->get_width()), alloca);
+        llvm::Value *next =
+            builder.CreateAdd(curr, builder.getIntN(node.i_sym->type->get_width(), 1));
         builder.CreateStore(next, alloca);
 
         // e.g. if block ends with return, adding 2 terminators is an error
