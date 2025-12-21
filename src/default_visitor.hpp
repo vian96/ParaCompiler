@@ -42,6 +42,25 @@ class DefaultVisitor : public Visitor {
     void visit(AST::IntLit &) override {}
     void visit(AST::Id &) override {}
     void visit(AST::Input &) override {}
+
+    virtual void visit(AST::Block &node) override {
+        for (const auto& stmt : node.statements)
+            if (stmt) stmt->accept(*this);
+    }
+    virtual void visit(AST::ForStmt &node) override {
+        for (auto &slice:node.slice) slice->accept(*this);
+        if (node.container) node.container->accept(*this);
+        node.body->accept(*this);
+    }
+    virtual void visit(AST::WhileStmt &node) override {
+        node.expr->accept(*this);
+        node.body->accept(*this);
+    }
+    virtual void visit(AST::IfStmt &node) override {
+        node.expr->accept(*this);
+        node.trueb->accept(*this);
+        node.falseb->accept(*this);
+    }
 };
 
 }  // namespace ParaCompiler::Visitor

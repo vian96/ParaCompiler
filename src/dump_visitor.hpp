@@ -97,6 +97,56 @@ class DumpVisitor : public Visitor {
         std::cout << "TypeSpec [" << node.name << "]\n";
     }
 
+    virtual void visit(AST::Block &node) override {
+        print_indent();
+        std::cout << "Block\n";
+
+        indent_level++;
+        for (const auto &stmt : node.statements)
+            if (stmt) stmt->accept(*this);
+
+        indent_level--;
+    };
+
+    virtual void visit(AST::ForStmt &node) override {
+        print_indent();
+        std::cout << "For [" << node.id << "]\n";
+
+        indent_level++;
+        print_indent();
+        if (node.slice.size()) {
+            std::cout << "Slice [\n";
+            for (auto &slice : node.slice)
+                slice->accept(*this);
+            print_indent();
+            std::cout << "]\n";
+        } else {
+            std::cout << "Container [" << node.container << "]\n";
+        }
+        node.body->accept(*this);
+        indent_level--;
+    };
+
+    virtual void visit(AST::WhileStmt &node) override {
+        print_indent();
+        std::cout << "While\n";
+        indent_level++;
+        node.expr->accept(*this);
+        node.body->accept(*this);
+        indent_level--;
+    }
+
+    virtual void visit(AST::IfStmt &node) override {
+        print_indent();
+        std::cout << "If\n";
+        indent_level++;
+        node.expr->accept(*this);
+        node.trueb->accept(*this);
+        if (node.falseb)
+            node.falseb->accept(*this);
+        indent_level--;
+    }
+
     // --- Unused/Abstract ---
     // These shouldn't be called directly in a valid AST,
     // but must be implemented.

@@ -14,6 +14,10 @@ struct TypeSpec;
 struct Assignment;
 struct Print;
 struct ExprStmt;
+struct Block;
+struct ForStmt;
+struct WhileStmt;
+struct IfStmt;
 }  // namespace ParaCompiler::AST
 
 namespace ParaCompiler::Visitor {
@@ -37,6 +41,10 @@ struct Visitor {
     virtual void visit(AST::Assignment &) = 0;
     virtual void visit(AST::Print &) = 0;
     virtual void visit(AST::ExprStmt &) = 0;
+    virtual void visit(AST::Block &) = 0;
+    virtual void visit(AST::ForStmt &) = 0;
+    virtual void visit(AST::WhileStmt &) = 0;
+    virtual void visit(AST::IfStmt &) = 0;
 };
 
 }  // namespace ParaCompiler::Visitor

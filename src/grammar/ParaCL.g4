@@ -6,7 +6,15 @@ statement
     : assignment ';'
     | expr ';'
     | output ';'
+    | ifStatement
+    | whileStatement
+    | forStatement
     ;
+block: '{' statement* '}' | statement;
+
+ifStatement: 'if' '(' expr ')' block ('else' block)?;
+whileStatement: 'while' '(' expr ')' block;
+forStatement: 'for' '(' ID 'in' expr ':' expr (':' expr)? ')' block;
 
 assignment: ID typeSpec ('=' expr)? | ID '=' expr;
 output: 'output' '(' INT ',' expr ')';

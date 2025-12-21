@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "visitor.hpp"
@@ -40,6 +41,11 @@ struct Expr : Node {
 };
 
 // --- STATEMENTS ---
+
+struct Block : Node {
+    std::vector<std::unique_ptr<Statement>> statements;
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
 
 struct Assignment : Statement {
     std::string name;
@@ -87,6 +93,31 @@ struct Id : Expr {
 };
 
 struct Input : Expr {
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct IfStmt : Statement {
+    std::unique_ptr<Expr> expr;
+    std::unique_ptr<Block> trueb;
+    std::unique_ptr<Block> falseb;
+
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct WhileStmt : Statement {
+    std::unique_ptr<Expr> expr;
+    std::unique_ptr<Block> body;
+
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct ForStmt : Statement {
+    std::string id;
+    std::unique_ptr<Id> container;
+    std::vector<std::unique_ptr<Expr>> slice;
+    std::unique_ptr<Block> body;
+    Symbols::Symbol *i_sym;
+
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 

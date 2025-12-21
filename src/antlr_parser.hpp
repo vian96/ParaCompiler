@@ -5,6 +5,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "ParaCLBaseVisitor.h"
 #include "ast.hpp"
@@ -19,17 +20,13 @@ class TreeBuilder : public ParaCLBaseVisitor {
     template <typename T>
     std::unique_ptr<T> take(Any a) {
         if (!a.has_value()) return nullptr;
-        try {
-            AST::Node* base_ptr = std::any_cast<AST::Node*>(a);
-            T* typed_ptr = dynamic_cast<T*>(base_ptr);
-            if (!typed_ptr && base_ptr != nullptr) {
-                std::cerr << "ICE: AST type mismatch.\n";
-                return nullptr;
-            }
-            return std::unique_ptr<T>(typed_ptr);
-        } catch (...) {
+        AST::Node* base_ptr = std::any_cast<AST::Node*>(a);
+        T* typed_ptr = dynamic_cast<T*>(base_ptr);
+        if (!typed_ptr && base_ptr != nullptr) {
+            std::cerr << "ICE: AST type mismatch.\n";
             return nullptr;
         }
+        return std::unique_ptr<T>(typed_ptr);
     }
 
     std::unique_ptr<AST::Program> build(ParaCLParser::ProgramContext* ctx) {
@@ -47,6 +44,12 @@ class TreeBuilder : public ParaCLBaseVisitor {
     }
 
     Any visitStatement(ParaCLParser::StatementContext* ctx) override {
+        if (ctx->forStatement()) return visit(ctx->forStatement());
+
+        if (ctx->ifStatement()) return visit(ctx->ifStatement());
+
+        if (ctx->whileStatement()) return visit(ctx->whileStatement());
+
         if (ctx->assignment()) return visit(ctx->assignment());
 
         if (ctx->output()) return visit(ctx->output());
@@ -64,6 +67,39 @@ class TreeBuilder : public ParaCLBaseVisitor {
         node->name = ctx->ID()->getText();
         if (ctx->typeSpec()) node->typeSpec = take<AST::TypeSpec>(visit(ctx->typeSpec()));
         if (ctx->expr()) node->val = take<AST::Expr>(visit(ctx->expr()));
+        return static_cast<AST::Node*>(node);
+    }
+
+    Any visitBlock(ParaCLParser::BlockContext* ctx) override {
+        auto* node = new AST::Block();
+        for (auto* stmtCtx : ctx->statement())
+            if (auto stmt = take<AST::Statement>(visit(stmtCtx)))
+                node->statements.push_back(std::move(stmt));
+        return static_cast<AST::Node*>(node);
+    }
+
+    Any visitIfStatement(ParaCLParser::IfStatementContext* ctx) override {
+        auto* node = new AST::IfStmt();
+        node->expr = take<AST::Expr>(visit(ctx->expr()));
+        node->trueb = take<AST::Block>(visit(ctx->block(0)));
+        if (ctx->block().size() > 1)
+            node->falseb = take<AST::Block>(visit(ctx->block(1)));
+        return static_cast<AST::Node*>(node);
+    }
+
+    Any visitWhileStatement(ParaCLParser::WhileStatementContext* ctx) override {
+        auto* node = new AST::WhileStmt();
+        node->expr = take<AST::Expr>(visit(ctx->expr()));
+        node->body = take<AST::Block>(visit(ctx->block()));
+        return static_cast<AST::Node*>(node);
+    }
+
+    Any visitForStatement(ParaCLParser::ForStatementContext* ctx) override {
+        auto* node = new AST::ForStmt();
+        for (auto* expr : ctx->expr())
+            node->slice.push_back(take<AST::Expr>(visit(expr)));
+        node->id = ctx->ID()->getText();
+        node->body = take<AST::Block>(visit(ctx->block()));
         return static_cast<AST::Node*>(node);
     }
 
