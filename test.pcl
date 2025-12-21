@@ -55,6 +55,10 @@ v1 = tuple[1];
 output(0, v0);
 output(0, v1);
 
+tuple2 = tuple;
+output(0, tuple2[0]);
+output(0, tuple2[1]);
+
 // Creates struct { x: int(8), y: int(32) }
 val_x : int(8) = 5;
 val_y = 500;

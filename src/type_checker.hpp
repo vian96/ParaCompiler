@@ -71,9 +71,9 @@ struct TypeChecker : Visitor::DefaultVisitor {
             if (node.val->type != manager.get_flexiblet()) {
                 node.sym->type = node.val->type;
                 // lval->rval
-                node.val = make_conversion_node_or_propagate(std::move(node.val), node.sym->type);
-            }
-            else {
+                node.val = make_conversion_node_or_propagate(std::move(node.val),
+                                                             node.sym->type);
+            } else {
                 node.sym->type = manager.get_intt();
                 node.val = make_conversion_node_or_propagate(std::move(node.val),
                                                              node.sym->type);
@@ -189,6 +189,9 @@ struct TypeChecker : Visitor::DefaultVisitor {
         for (int i = 0; i < node.vals.size(); i++) {
             auto &val = node.vals[i];
             val.val->accept(*this);
+            if (val.val->type == manager.get_flexiblet())
+                val.val = make_conversion_node_or_propagate(std::move(val.val),
+                                                            manager.get_intt());
             fields.push_back(val.val->type);
             if (!val.name.empty()) names.emplace(val.name, i);
             // do lval->rval if needed

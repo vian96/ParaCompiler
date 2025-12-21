@@ -1,5 +1,6 @@
 #pragma once
 
+#include <llvm-21/llvm/IR/DerivedTypes.h>
 #include <llvm/ADT/APInt.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
@@ -33,6 +34,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     std::unordered_map<Symbols::Symbol *, llvm::AllocaInst *> symbols;
     Types::TypeManager &type_manager;
 
+    std::unordered_map<const Types::Type *, llvm::Type *> type_to_llvm;
+
     llvm::LLVMContext ctx;
     llvm::IRBuilder<> builder;
     llvm::Module module;
@@ -47,11 +50,34 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         return std::exchange(last_value, nullptr);
     }
 
-    llvm::AllocaInst *create_entry_block_alloca(llvm::Function *func, llvm::Type *type,
+    llvm::AllocaInst *create_entry_block_alloca(llvm::Type *type,
                                                 std::string_view name = "") {
+        llvm::Function *func = builder.GetInsertBlock()->getParent();
         llvm::IRBuilder<> tmp_builder(&func->getEntryBlock(),
                                       func->getEntryBlock().begin());
         return tmp_builder.CreateAlloca(type, nullptr, name);
+    }
+
+    llvm::Type *get_llvm_type(const Types::Type *type) {
+        auto it = type_to_llvm.find(type);
+        if (it != type_to_llvm.end()) return it->second;
+
+        llvm::Type *res = nullptr;
+        if (auto stype = dynamic_cast<const Types::StructType *>(type)) {
+            std::vector<llvm::Type *> fields;
+            for (auto &t : stype->fields) fields.push_back(get_llvm_type(t));
+            res = llvm::StructType::create(ctx, fields);
+        } else {
+            try {
+                auto width = type->get_width();
+                res = builder.getIntNTy(width);
+            } catch (std::runtime_error) {
+                throw std::runtime_error("can't convert type [" +
+                                         Types::Type::ptr_to_str(type) + "] to llvm");
+            }
+        }
+        type_to_llvm.emplace(type, res);
+        return res;
     }
 
     LLVMEmitterVisitor(Types::TypeManager &type_manager_)
@@ -81,9 +107,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     }
 
     llvm::AllocaInst *create_alloca(Symbols::Symbol *sym, std::string_view name) {
-        llvm::Function *parent_func = builder.GetInsertBlock()->getParent();
-        llvm::AllocaInst *alloca = create_entry_block_alloca(
-            parent_func, builder.getIntNTy(sym->type->get_width()), name);
+        llvm::AllocaInst *alloca =
+            create_entry_block_alloca(get_llvm_type(sym->type), name);
 
         symbols.emplace(sym, alloca);
         return alloca;
@@ -154,9 +179,11 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         }
     }
 
-    void visit(AST::Id &node) override {
-        last_value = builder.CreateLoad(builder.getIntNTy(node.type->get_width()),
-                                        symbols.at(node.sym));
+    void visit(AST::Id &node) override { last_value = symbols.at(node.sym); }
+
+    void visit(AST::LValToRVal &node) override {
+        node.expr->accept(*this);
+        last_value = builder.CreateLoad(get_llvm_type(node.type), get_last_value());
     }
 
     void visit(AST::IntLit &node) override {
@@ -166,9 +193,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     // TODO: add dynamic cast checks to input and output nodes
     void visit(AST::Input &node) override {
         size_t bit_width = node.type->get_width();
-        llvm::Function *func = builder.GetInsertBlock()->getParent();
         llvm::AllocaInst *buffer =
-            create_entry_block_alloca(func, llvm::Type::getIntNTy(ctx, bit_width));
+            create_entry_block_alloca(llvm::Type::getIntNTy(ctx, bit_width));
 
         // pcl_input_int__(ptr %buffer, i32 %width)
         llvm::Function *callee = module.getFunction("pcl_input_int__");
@@ -182,9 +208,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
 
     void visit(AST::Print &node) override {
         size_t bit_width = node.expr->type->get_width();
-        llvm::Function *func = builder.GetInsertBlock()->getParent();
         llvm::AllocaInst *buffer =
-            create_entry_block_alloca(func, llvm::Type::getIntNTy(ctx, bit_width));
+            create_entry_block_alloca(llvm::Type::getIntNTy(ctx, bit_width));
 
         node.expr->accept(*this);
         builder.CreateStore(get_last_value(), buffer);
@@ -226,7 +251,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
 
     void visit(AST::Conversion &node) override {
         if (node.type == type_manager.get_flexiblet())
-            throw std::runtime_error("unexpected flexType");
+            throw std::runtime_error(
+                "unexpected flexType in llvm emitter conversion node");
         node.expr->accept(*this);
         auto expr = get_last_value();
         if (node.type == type_manager.get_boolt()) {
@@ -259,10 +285,6 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         builder.SetInsertPoint(cond_bb);
         node.expr->accept(*this);
         llvm::Value *cond = get_last_value();
-
-        if (cond->getType()->getIntegerBitWidth() != 1)
-            cond = builder.CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0),
-                                        "to_bool");
 
         builder.CreateCondBr(cond, body_bb, merge_bb);
 
@@ -314,6 +336,29 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         if (!builder.GetInsertBlock()->getTerminator()) builder.CreateBr(cond_bb);
 
         builder.SetInsertPoint(merge_bb);
+    }
+
+    void visit(AST::Glue &node) override {
+        auto stype = get_llvm_type(node.type);
+        auto temp = create_entry_block_alloca(stype);
+        for (int i = 0; i < node.vals.size(); i++) {
+            auto &val = node.vals[i];
+            val.val->accept(*this);
+            builder.CreateStore(get_last_value(),
+                                builder.CreateStructGEP(stype, temp, i));
+        }
+        last_value = temp;
+    }
+
+    void visit(AST::DotExpr &node) override {
+        node.left->accept(*this);
+        last_value = builder.CreateStructGEP(get_llvm_type(node.left->type),
+                                             get_last_value(), node.field_ind);
+    }
+    void visit(AST::IndexExpr &node) override {
+        node.left->accept(*this);
+        last_value = builder.CreateStructGEP(get_llvm_type(node.left->type),
+                                             get_last_value(), node.ind);
     }
 };
 
