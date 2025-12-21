@@ -1,6 +1,6 @@
-// RUN: %paracl %s | FileCheck %s
+// RUN: echo "10 20 30 40" | %paracl %s | %lli -load=%lib | FileCheck %s
 
-v0 : int = input(0); // random comment test
+v0 : int = input(0); // reads 10
 // random comment test v2
 v1 = v0+2*4-8*(v0*2+4);
 v1 = v1 >= 0;
@@ -18,12 +18,26 @@ while (i < 7) {
 	output(0, i*i*i);
 	i = i+1;
 }
-v16 : int ( 16 ) = 123 * 4 + 45 + 789 + input(0);
+v16 : int ( 16 ) = 123 * 4 + 45 + 789 + input(0); // reads 20
 v32 = v16 *2 + 7;
-v64 :int(64)= v32*3 + v16 * 2 + input(0);
+v64 :int(64)= v32*3 + v16 * 2 + input(0); // reads 30
 output(0, v64+v32+7);
-v16 = input(0);
-output(0, v0);
+v16 = input(0); // reads 40
+output(0, v0); // prints 10
 output(0, v1>=0 && v0 <= 7 || v0 == 9);
 
-// CHECK: 42
+// CHECK: 456
+// CHECK: 0
+// CHECK: 1
+// CHECK: 4
+// CHECK: 9
+// CHECK: 0
+// CHECK: 1
+// CHECK: 8
+// CHECK: 27
+// CHECK: 64
+// CHECK: 125
+// CHECK: 216
+// CHECK: 265
+// CHECK: 10
+// CHECK: 0

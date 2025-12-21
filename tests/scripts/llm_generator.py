@@ -227,8 +227,9 @@ def main() -> None:
         pcl_path = PCL_DIR / f"{base_name}.pcl"
 
         content = []
+        lit_header = "// RUN: %paracl %s | %lli -load=%lib | FileCheck %s\n"
         if GENERATE_LIT_HEADERS:
-            content.append(f"// RUN: %paracl %s | FileCheck %s")
+            content.append(lit_header)
 
         content.append(pcl_code)
 
