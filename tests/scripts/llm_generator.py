@@ -17,9 +17,39 @@ MODEL = "codestral:22b"
 COMPILER_BIN = "./build/src/paracl"
 GRAMMAR_FILE = "src/grammar/ParaCL.g4"
 
+GENERATE_LIT_HEADERS = True
+
 BASE_GEN_DIR = "tests/gen"
 PCL_DIR = os.path.join(BASE_GEN_DIR, "pcl")
 CRASH_DIR = os.path.join(BASE_GEN_DIR, "crashes")
+
+PARACL_SPEC = """
+## 1.1 Keywords
+input, output, if, else, for, in, int
+
+## 1.2 Types
+v : int = 5;
+v : int(16) = 10;
+By default, int is a 32-bit signed integer.
+Integers use two’s complement and wrap on overflow.
+
+## 1.7 Conditionals
+if (v2 == 0) output(0, 1);
+else { output(0, 2); }
+
+## 1.9 Loops
+// Range loop (inclusive start, exclusive end logic usually, but follow C semantics)
+for (i in 0:5) output(0, i);
+
+// While loop
+while (n < 10) {
+  n = n + 1;
+  output(0, n);
+}
+
+## I/O
+output(0, val); // Prints value to stdout with newline
+"""
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,7 +81,9 @@ def load_existing_tests() -> None:
     for filepath in files:
         try:
             with open(filepath, "r") as f:
-                SEEN_HASHES.add(get_code_hash(f.read()))
+                content = f.read()
+                clean_content = re.sub(r"//.*", "", content)
+                SEEN_HASHES.add(get_code_hash(clean_content))
         except Exception as e:
             logger.warning(f"Could not read {filepath}: {e}")
     logger.info(f"Loaded {len(SEEN_HASHES)} existing tests.")
@@ -65,47 +97,55 @@ def clean_code(text: Optional[str]) -> str:
     return text.replace("```", "").strip()
 
 def get_random_var_name() -> str:
-    prefix = random.choice(["v", "val", "res", "tmp", "data"])
-    suffix = ''.join(random.choices(string.ascii_lowercase, k=3))
+    prefix = random.choice(["v", "val", "res", "tmp", "cnt", "iter"])
+    suffix = ''.join(random.choices(string.ascii_lowercase, k=2))
     return f"{prefix}_{suffix}"
 
 def generate_test_pair(index: int) -> Optional[Dict[str, Any]]:
+    limit = random.randint(5, 20)
     v1 = get_random_var_name()
-    v2 = get_random_var_name()
-    val1 = random.randint(-1000, 1000)
-    val2 = random.randint(-1000, 1000)
 
     scenarios = [
-        f"Assign {val1} to {v1}, output it.",
-        f"Assign {val1} to {v1}, assign {v1} to {v2}, output {v2}.",
-        f"Multiple outputs: {v1}={val1}, {v2}={val2}, output both.",
-        f"Reassignment: {v1}={val1}, output it, then {v1}={val2}, output it."
+        f"Calculate Factorial of {random.randint(4, 8)} using a while loop.",
+        f"Calculate sum of numbers from 1 to {limit} using a for loop (range).",
+        f"Fibonacci sequence: print first {random.randint(5, 10)} numbers.",
+        f"Nested loops: Multiplication table for numbers up to 3.",
+        f"Complex arithmetic with precedence: ({v1} * 2 + 5) / 3 - {v1} (initialize {v1} first).",
+        f"If-Else logic: Loop from 0 to 10, print 1 if even, 0 if odd.",
+        f"Sum of squares from 1 to {random.randint(4, 8)}.",
+        f"Collatz conjecture step: if {v1} is even div by 2, else mult by 3 plus 1 (perform a few steps)."
     ]
     task = random.choice(scenarios)
 
     prompt = f"""
-    [INST] You are a test generator for the ParaCL compiler.
+    [INST] You are an Expert Polyglot Programmer and Compiler Tester.
 
-    HERE IS THE OFFICIAL GRAMMAR (Read it carefully):
+    Target Language: **ParaCL**.
+
+    --- LANGUAGE SPECIFICATION ---
+    {PARACL_SPEC}
+
+    --- ANTLR GRAMMAR (Syntax Reference) ---
     ```antlr
     {RAW_GRAMMAR}
     ```
 
-    CRITICAL RULES (PHASE 0):
-    1. **NO C-STYLE DECLARATIONS**.
-       WRONG: `int {v1} = {val1};`
-       WRONG: `{v1} int = {val1};`
-       RIGHT: `{v1} : int = {val1};`
+    --- IMPLEMENTATION STATUS (What works NOW) ---
+    1. **Types**: Only `int` is fully stable. Avoid `double`/`float` for now.
+    2. **Logic**: `if`, `else`, `while`, `for (i in start:end)`.
+    3. **Operators**: `+`, `-`, `*`, `/`, `&&`, `||`, `<`, `>`, `==`.
+    4. **I/O**: `output(0, val)`.
+    5. **Input**: DO NOT USE `input()`. Use hardcoded variable initialization (e.g., `n : int = 10;`).
 
-    2. **NO ARITHMETIC** (Compiler crashes on +, -, *, /).
-       WRONG: `x = 5 + 5;`
-       RIGHT: `x = 10;`
+    --- TASK ---
+    Create a logic test for: **"{task}"**
 
+    Requirements:
+    1. Write equivalent code in **Python** (Reference) and **ParaCL**.
+    2. **Determinism**: The output MUST be identical.
     3. **Syntax**:
-       - Output: `output(0, var_name);`
-       - Assign: `var_name = 123;`
-
-    Task: Generate a test for: "{task}"
+       - Python: use `print(val)`.
+       - ParaCL: use `output(0, val);`. Variables MUST have types (`v : int = ...`).
 
     Return ONLY JSON:
     {{
@@ -121,7 +161,7 @@ def generate_test_pair(index: int) -> Optional[Dict[str, Any]]:
             "prompt": prompt,
             "stream": False,
             "format": "json",
-            "options": {"temperature": 0.5}
+            "options": {"temperature": 1.0}
         }).json()
         return json.loads(resp['response'])
     except Exception as e:
@@ -160,7 +200,7 @@ def main() -> None:
     logger.info(f"Starting LLM test generator, using {MODEL}...")
 
     success_count = 0
-    total_attempts = 15
+    total_attempts = 20
 
     for i in range(total_attempts):
         logger.info(f"--- Iteration #{i} ---")
@@ -173,6 +213,7 @@ def main() -> None:
         pcl_code = clean_code(data.get("paracl_code"))
 
         if not py_code or not pcl_code:
+            logger.warning("Empty code received")
             continue
 
         code_hash = get_code_hash(pcl_code)
@@ -188,15 +229,22 @@ def main() -> None:
         base_name = f"test_{int(time.time())}_{i}"
         pcl_path = os.path.join(PCL_DIR, f"{base_name}.pcl")
 
-        check_lines = "\n".join([f"// CHECK: {line}" for line in expected_out.splitlines()])
-        lit_header = f"// RUN: %paracl %s | FileCheck %s\n"
+        content = []
+        if GENERATE_LIT_HEADERS:
+            content.append(f"// RUN: %paracl %s | FileCheck %s")
+
+        content.append(pcl_code)
+
+        if GENERATE_LIT_HEADERS and expected_out:
+            content.append("\n")
+            for line in expected_out.splitlines():
+                if line.strip():
+                    content.append(f"// CHECK: {line}")
+
+        content.append("")
 
         with open(pcl_path, "w") as f:
-            f.write(lit_header)
-            f.write(pcl_code)
-            f.write("\n\n")
-            f.write(check_lines)
-            f.write("\n")
+            f.write("\n".join(content))
 
         ret_code, err_msg = run_compiler_check(pcl_path)
 
@@ -206,9 +254,8 @@ def main() -> None:
                 os.rename(pcl_path, os.path.join(CRASH_DIR, f"{base_name}.pcl"))
             else:
                 one_line_err = err_msg.strip().replace('\n', ' | ')[:120]
-                logger.warning(f"Syntax error: {one_line_err}...")
+                logger.warning(f"Compiler Error: {one_line_err}...")
                 logger.debug("--- FAILED CODE ---\n" + pcl_code + "\n-------------------")
-
                 if os.path.exists(pcl_path):
                     os.remove(pcl_path)
         else:
