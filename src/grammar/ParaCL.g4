@@ -19,12 +19,17 @@ forStatement: 'for' '(' ID 'in' expr ':' expr (':' expr)? ')' block;
 assignment: ID typeSpec ('=' expr)? | ID '=' expr;
 output: 'output' '(' INT ',' expr ')';
 
+glueEntry: expr (':' ID)?;
+
 expr
     : '(' expr ')' # BracketExpr
     | input        # InputExpr
     | INT          # IntExpr
     | ID           # IdExpr
-    | '-' expr # UnaryExpr
+    | 'glue' '(' glueEntry (',' glueEntry)* ')' # GlueExpr
+    | expr '.' ID       # DotExpr
+    | expr '[' INT ']'  # IndexExpr
+    | '-' expr          # UnaryExpr
     | expr ( '*' | '/') expr # MulExpr
     | expr ( '+' | '-') expr # AddExpr
     | expr ('<=' | '>=' | '<' | '>' | '==' | '!=') expr # CmpExpr

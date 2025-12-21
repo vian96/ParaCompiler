@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstddef>
 #include <memory>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -10,6 +12,10 @@
 namespace ParaCompiler::Types {
 
 struct Type {
+    static std::string ptr_to_str(const Types::Type *t) {
+        return t ? std::string(*t) : "nullType";
+    }
+
     virtual ~Type() {}
 
     virtual operator std::string() const = 0;
@@ -35,7 +41,29 @@ struct BoolType : Type {
 struct FlexibleType : Type {
     operator std::string() const override { return "flexType"; }
     virtual size_t get_width() const override {
-        throw "unable to get width of flexible type!";
+        throw std::runtime_error("unable to get width of flexible type!");
+    }
+};
+
+struct StructType : Type {
+    std::vector<const Type *> fields;
+    std::unordered_map<std::string, size_t> names;
+
+    StructType(std::vector<const Type *> fields_,
+               std::unordered_map<std::string, size_t> names_)
+        : fields(std::move(fields_)), names(std::move(names_)) {}
+
+    operator std::string() const override {
+        std::stringstream out;
+        out << "StructType: [";
+        for (auto &field : fields) out << ptr_to_str(field) << ' ';
+        out << "] names: [";
+        for (auto &name : names) out << name.first << "=" << name.second << ' ';
+        return out.str();
+    }
+
+    virtual size_t get_width() const override {
+        throw std::runtime_error("unable to get width of struct type!");
     }
 };
 
@@ -80,6 +108,14 @@ struct TypeManager {
         if (auto ti = dynamic_cast<const IntType *>(t2))
             width = std::max(width, ti->width);
         return get_intt(width);
+    }
+
+    const Type *get_struct_type(std::vector<const Type *> fields,
+                                std::unordered_map<std::string, size_t> names) {
+        auto structt = std::make_unique<StructType>(std::move(fields), std::move(names));
+        auto structp = structt.get();
+        types.push_back(std::move(structt));
+        return structp;
     }
 };
 

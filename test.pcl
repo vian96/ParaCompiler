@@ -23,3 +23,71 @@ output(0, v64+v32+7);
 v16 = input(0);
 output(0, v0);
 output(0, v1>=0 && v0 <= 7 || v0 == 9);
+
+val_def = 2147483640;
+output(0, val_def);
+
+val_i8 : int(8) = 127;
+output(0, val_i8);
+
+val_i8_overflow : int(8) = val_i8 + 1;
+output(0, val_i8_overflow); // Exp: -128
+
+// int(8) (-128) + int(32) (1000) -> Promoted to int(32)
+// Calculation: -128 + 1000 = 872
+val_mixed = val_i8_overflow + 1000;
+output(0, val_mixed); // Exp: 872
+
+if (1) {
+    output(0, 1111);
+}
+
+// Checks LValToRVal conversion on 'cnt' inside condition
+cnt = 3;
+while (cnt > 0) {
+    output(0, cnt);
+    cnt = cnt - 1;
+}
+
+tuple = glue(10, 20);
+v0 = tuple[0];
+v1 = tuple[1];
+output(0, v0);
+output(0, v1);
+
+// Creates struct { x: int(8), y: int(32) }
+val_x : int(8) = 5;
+val_y = 500;
+my_struct = glue(val_x : x, val_y: y);
+
+read_y = my_struct.y;
+output(0, read_y);
+
+// struct { meta: { x: int(8), y: int(32) }, id: int }
+complex = glue(my_struct:meta, 999:id);
+
+deep_val = complex.meta.x; 
+output(0, deep_val); // Exp: 5
+
+res_flex = val_i8 + 1; 
+output(0, res_flex); // Exp: 128 (if result is promoted to int) OR -128 if strictly 8-bit?
+check_overflow : int(8) = 127;
+res_forced_i8 = check_overflow + 1;
+output(0, res_forced_i8); // Exp: -128
+
+// 50 + 50 (both flex) -> defaults to int(32)
+res_default = 50 + 50;
+output(0, res_default);
+
+trunc_val : int(8) = 300;
+output(0, trunc_val); // Exp: 44
+
+is_equal = (10 == 10); // is_equal is bool
+if (is_equal) {
+    output(0, 1001);
+}
+
+if (1 && 1) {
+    output(0, 1002);
+}
+

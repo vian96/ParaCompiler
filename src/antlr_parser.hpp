@@ -182,6 +182,28 @@ class TreeBuilder : public ParaCLBaseVisitor {
         auto* node = new AST::Input();
         return static_cast<AST::Node*>(node);
     }
+
+    Any visitDotExpr(ParaCLParser::DotExprContext* ctx) override {
+        auto* node = new AST::DotExpr();
+        node->left = take<AST::Expr>(visit(ctx->expr()));
+        node->id = ctx->ID()->getText();
+        return static_cast<AST::Node*>(node);
+    }
+
+    Any visitIndexExpr(ParaCLParser::IndexExprContext* ctx) override {
+        auto* node = new AST::IndexExpr();
+        node->left = take<AST::Expr>(visit(ctx->expr()));
+        node->ind = std::stoll(ctx->INT()->getText());
+        return static_cast<AST::Node*>(node);
+    }
+
+    Any visitGlueExpr(ParaCLParser::GlueExprContext* ctx) override {
+        auto* node = new AST::Glue();
+        for (auto& entry : ctx->glueEntry())
+            node->vals.push_back(AST::GlueEntry(entry->ID() ? entry->ID()->getText() : "",
+                                                take<AST::Expr>(visit(entry->expr()))));
+        return static_cast<AST::Node*>(node);
+    }
 };
 
 }  // namespace ParaCompiler
