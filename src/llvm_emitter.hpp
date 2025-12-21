@@ -73,7 +73,7 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
                                module);
 
         func = llvm::Function::Create(
-            llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {}),
+            llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), {}),
             llvm::Function::ExternalLinkage, "main", module);
 
         llvm::BasicBlock *entryBB = llvm::BasicBlock::Create(ctx, "entry", func);
@@ -94,7 +94,7 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
             if (stmt) stmt->accept(*this);
 
         if (builder.GetInsertBlock() && !builder.GetInsertBlock()->getTerminator())
-            builder.CreateRetVoid();
+            builder.CreateRet(builder.getInt32(0));
 
         if (llvm::verifyModule(module, &llvm::errs())) {
             module.print(llvm::errs(), nullptr);
