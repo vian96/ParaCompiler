@@ -9,7 +9,7 @@ statement
     | ifStatement
     | whileStatement
     | forStatement
-    | returnStatement
+    | returnStatement ';'
     ;
 
 block: '{' statement* '}' | statement;
