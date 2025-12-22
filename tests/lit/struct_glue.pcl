@@ -1,0 +1,31 @@
+// RUN: %paracl %s > %t.ll
+// RUN: %lli -load=%lib %t.ll | FileCheck %s
+
+// Test: Positional glue (no names)
+// Type deduction should infer anonymous struct { int, int }
+pair_pos = glue(10, 20);
+
+// Test: Index access (valid LValueToRValue check)
+v1 = pair_pos[0]; // 10
+v2 = pair_pos[1]; // 20
+output(0, v1 + v2);
+// CHECK: 30
+
+// Test: Named glue & Nested glue
+// Struct layout: { x: int, inner: { a: int, b: int } }
+complex = glue(
+    100 : x,
+    glue(1, 2) : inner
+);
+
+// Test: Dot access mixed with Index access
+// complex.inner -> results in struct
+// [1] -> accesses 2nd element of inner struct
+val_nested = complex.inner[1];
+output(0, val_nested);
+// CHECK: 2
+
+// Test: Assignment to struct field (LValue resolution)
+complex.x = 50;
+output(0, complex.x);
+// CHECK: 50

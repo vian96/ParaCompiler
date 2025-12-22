@@ -1,0 +1,23 @@
+// RUN: %paracl %s > %t.ll
+// RUN: %lli -load=%lib %t.ll | FileCheck %s
+
+// Setup data object
+data_obj = glue(5 : val, 0 : dummy);
+
+// Test 1: Functionality from section 3 of original test
+// Passing aggregate types access in math expression
+result = data_obj.val * 10;
+output(0, result);
+// CHECK: 50
+
+// Test 2: Precedence: '.' binds tighter than '*'
+// data_obj.val is 5. 5 * 2 = 10.
+calc = data_obj.val * 2;
+output(0, calc);
+// CHECK: 10
+
+// Test 3: Nested glue in expression
+// Should construct temporary struct, access 'a', then add.
+val_temp = glue(10:a, 20:b).a + 5;
+output(0, val_temp);
+// CHECK: 15

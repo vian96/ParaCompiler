@@ -1,0 +1,19 @@
+// RUN: %paracl %s > %t.ll
+// RUN: %lli -load=%lib %t.ll | FileCheck %s
+
+// Declare an 8-bit integer. Max value is 127.
+tiny_val : int(8) = 127;
+
+// Force an overflow.
+// Expectation: 127 + 1 wraps to -128 (Two's Complement).
+tiny_val = tiny_val + 1;
+
+output(0, tiny_val);
+// CHECK: -128
+
+// Implicit Promotion (assignment logic test):
+// Assigning 8-bit negative to 32-bit (default) int.
+// Compiler should emit `sext` (Sign Extend).
+big_val : int = tiny_val;
+output(0, big_val);
+// CHECK: -128

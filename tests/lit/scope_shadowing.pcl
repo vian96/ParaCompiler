@@ -1,0 +1,22 @@
+// RUN: %paracl %s > %t.ll
+// RUN: %lli -load=%lib %t.ll | FileCheck %s
+
+counter = 0;
+limit = 3;
+result = 50;
+
+while (counter < limit) {
+    // Test: Local variable inside a block
+    local_res = counter * 100;
+
+    output(0, local_res);
+    // CHECK: 0
+    // CHECK: 100
+    // CHECK: 200
+
+    counter = counter + 1;
+}
+
+// Verify outer 'result' was preserved (it was never touched)
+output(0, result);
+// CHECK: 50
