@@ -16,18 +16,25 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    bool dump_ast = false;
+    for (int i = 2; i < argc; ++i) {
+        if (std::string(argv[i]) == "--dump-ast") {
+            dump_ast = true;
+        }
+    }
+
     ParaCompiler::Compiler compiler(stream);
     auto& ast = compiler.ast;
     if (!ast) {
         std::cerr << "Failed to build AST.\n";
         return 1;
     }
-    std::cout << "=== AST Structure ===\n";
-
-    ParaCompiler::Visitor::DumpVisitor dumper;
-    ast->accept(dumper);
-
-    std::cout << "=====================\n";
+    if (dump_ast) {
+        std::cerr << "=== AST Structure ===\n";
+        ParaCompiler::Visitor::DumpVisitor dumper;
+        ast->accept(dumper);
+        std::cerr << "=====================\n";
+    }
 
     return 0;
 }

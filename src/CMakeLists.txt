@@ -25,7 +25,7 @@ add_custom_command(
 add_library(paracl_parser STATIC ${ANTLR_OUTPUTS})
 target_include_directories(paracl_parser PUBLIC ${GEN_DIR})
 
-target_include_directories(paracl_parser PUBLIC 
+target_include_directories(paracl_parser PUBLIC
     "${WORKSPACE_ROOT}/external/antlr4/runtime/Cpp/runtime/src"
 )
 
@@ -84,3 +84,7 @@ target_compile_options(paracl_core PRIVATE -frtti)
 add_executable(paracl main.cpp)
 target_link_libraries(paracl PRIVATE paracl_core)
 target_compile_options(paracl PRIVATE -frtti)
+
+add_library(parastdlib SHARED parastdlib.cpp)
+target_link_libraries(parastdlib PRIVATE ${LLVM_LINK_LIBS})
+set_target_properties(parastdlib PROPERTIES OUTPUT_NAME "parastdlib")
