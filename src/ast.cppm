@@ -1,6 +1,7 @@
 module;
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 export module ParaCompiler:AST;
@@ -15,17 +16,20 @@ struct Symbol;
 export namespace ParaCompiler::AST {
 
 struct Node {
-    virtual void accept(Visitor::Visitor &visitor) = 0;
+    virtual void accept(Visitor::Visitor& visitor) = 0;
     virtual ~Node() = default;
 };
 
 #define PARACOMPILER_AST_OVERRIDE_ACCEPT \
-    void accept(Visitor::Visitor &v) override { v.visit(*this); }
+    void accept(Visitor::Visitor& v) override { v.visit(*this); }
 
 struct TypeSpec : Node {
     std::string name;
-    bool is_int = true;  // TODO: make acutal check
+    bool is_int = true;
     size_t int_width = 32;
+
+    bool is_func = false;
+    std::vector<std::pair<std::string, std::unique_ptr<TypeSpec>>> args;
 
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -39,7 +43,7 @@ struct Program : Node {
 
 struct Expr : Node {
     virtual bool is_lvalue() const { return false; }
-    const Types::Type *type = nullptr;
+    const Types::Type* type = nullptr;
 
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -61,6 +65,11 @@ struct Assignment : Statement {
 };
 
 struct Print : Statement {
+    std::unique_ptr<Expr> expr;
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct RetStmt : Statement {
     std::unique_ptr<Expr> expr;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -94,7 +103,7 @@ struct IntLit : Expr {
 struct Id : Expr {
     bool is_lvalue() const override { return true; }
     std::string val;
-    Symbols::Symbol *sym;
+    Symbols::Symbol* sym;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 
@@ -122,7 +131,7 @@ struct ForStmt : Statement {
     std::unique_ptr<Id> container;
     std::vector<std::unique_ptr<Expr>> slice;
     std::unique_ptr<Block> body;
-    Symbols::Symbol *i_sym;
+    Symbols::Symbol* i_sym;
 
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -130,7 +139,7 @@ struct ForStmt : Statement {
 struct Conversion : Expr {
     std::unique_ptr<Expr> expr;
 
-    Conversion(std::unique_ptr<Expr> expr_, const Types::Type *res_type_)
+    Conversion(std::unique_ptr<Expr> expr_, const Types::Type* res_type_)
         : expr(std::move(expr_)) {
         type = res_type_;
     }
@@ -167,6 +176,12 @@ struct IndexExpr : Expr {
     bool is_lvalue() const override { return true; }
     std::unique_ptr<Expr> left;
     size_t ind;
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct FuncBody : Expr {
+    std::unique_ptr<Block> body;
+
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 

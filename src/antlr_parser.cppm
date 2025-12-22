@@ -6,6 +6,7 @@ module;
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "ParaCLBaseVisitor.h"
@@ -23,6 +24,9 @@ using Any = std::any;
 
 class TreeBuilder : public ParaCLBaseVisitor {
    public:
+    bool is_in_func = false;  // for transforming inputs into ids
+    AST::TypeSpec* func_spec = nullptr;
+
     // Helper: Extract Raw Pointer from std::any, cast to T*, wrap in unique_ptr
     template <typename T>
     std::unique_ptr<T> take(Any a) {
@@ -75,6 +79,12 @@ class TreeBuilder : public ParaCLBaseVisitor {
 
         if (ctx->assignment()) return visit(ctx->assignment());
 
+        if (ctx->returnStatement()) {
+            auto* node = new AST::RetStmt();
+            node->expr = take<AST::Expr>(visit(ctx->expr()));
+            return static_cast<AST::Node*>(node);
+        }
+
         if (ctx->output()) return visit(ctx->output());
 
         if (ctx->expr()) {
@@ -96,7 +106,22 @@ class TreeBuilder : public ParaCLBaseVisitor {
 
         if (ctx->typeSpec()) node->typeSpec = take<AST::TypeSpec>(visit(ctx->typeSpec()));
 
-        if (ctx->expr().size() > 1) node->val = take<AST::Expr>(visit(ctx->expr(1)));
+        if (ctx->expr().size() > 1) {
+            if (node->typeSpec && node->typeSpec->is_func) {
+                is_in_func = true;
+                func_spec = node->typeSpec.get();
+            }
+            node->val = take<AST::Expr>(visit(ctx->expr(1)));
+            if (is_in_func) {
+                auto func = std::make_unique<AST::FuncBody>();
+                func->body = std::make_unique<AST::Block>();
+                auto ret = std::make_unique<AST::RetStmt>();
+                ret->expr = std::move(node->val);
+                func->body->statements.push_back(std::move(ret));
+            }
+            is_in_func = false;
+            func_spec = nullptr;
+        }
 
         return static_cast<AST::Node*>(node);
     }
@@ -145,8 +170,17 @@ class TreeBuilder : public ParaCLBaseVisitor {
     Any visitTypeSpec(ParaCLParser::TypeSpecContext* ctx) override {
         auto* node = new AST::TypeSpec();
         node->name = ctx->getText();
-        node->is_int = true;
-        node->int_width = ctx->INT() ? std::stoll(ctx->INT()->getText()) : 32;
+        if (ctx->children[1]->getText() == "int") {
+            node->is_int = true;
+            node->is_func = false;
+            node->int_width = ctx->INT() ? std::stoll(ctx->INT()->getText()) : 32;
+        } else {
+            node->is_int = false;
+            node->is_func = true;
+            for (int i = 0; i < ctx->ID().size(); i++)
+                node->args.emplace_back(std::string(ctx->ID(i)->getText()),
+                                        take<AST::TypeSpec>(ctx->typeSpec(i)));
+        }
         return static_cast<AST::Node*>(node);
     }
 
@@ -208,9 +242,40 @@ class TreeBuilder : public ParaCLBaseVisitor {
     }
 
     Any visitInputExpr(ParaCLParser::InputExprContext* ctx) override {
-        if (ctx->input()->INT()->getText() != "0")
-            throw std::runtime_error("output only takes 0 as the first arg");
-        auto* node = new AST::Input();
+        if (!is_in_func) {
+            if (ctx->input()->INT()->getText() != "0")
+                throw std::runtime_error("output only takes 0 as the first arg");
+            auto* node = new AST::Input();
+            return static_cast<AST::Node*>(node);
+        }
+        auto ind = std::stoll(ctx->input()->INT()->getText());
+        if (ind >= func_spec->args.size())
+            throw std::runtime_error(std::to_string(ind) +
+                                     " is too big number of function arg");
+        auto* node = new AST::Id();
+        node->val = func_spec->args[ind].first;
+        return static_cast<AST::Node*>(node);
+    }
+
+    Any visitFuncExpr(ParaCLParser::FuncExprContext* ctx) override {
+        auto* node = new AST::FuncBody();
+        node->body = std::make_unique<AST::Block>();
+        for (auto* stmtCtx : ctx->statement())
+            if (auto stmt = take<AST::Statement>(visit(stmtCtx)))
+                node->body->statements.push_back(std::move(stmt));
+
+        auto& last = node->body->statements.back();
+        auto ret = dynamic_cast<AST::RetStmt*>(last.get());
+        auto exprstmt = dynamic_cast<AST::RetStmt*>(last.get());
+        if (!ret && !exprstmt)
+            throw std::runtime_error(
+                "expected function to end with either ret or exprstmt!");
+
+        if (exprstmt) {
+            auto ret = std::make_unique<AST::RetStmt>();
+            ret->expr = std::move(exprstmt->expr);
+            node->body->statements.back() = std::move(ret);
+        }
         return static_cast<AST::Node*>(node);
     }
 
