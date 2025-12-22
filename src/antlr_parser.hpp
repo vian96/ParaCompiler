@@ -2,12 +2,15 @@
 
 #include <any>
 #include <iostream>
+#include <istream>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 #include "ParaCLBaseVisitor.h"
+#include "ParaCLLexer.h"
+#include "ParaCLParser.h"
 #include "ast.hpp"
 
 namespace ParaCompiler {
@@ -27,6 +30,22 @@ class TreeBuilder : public ParaCLBaseVisitor {
             return nullptr;
         }
         return std::unique_ptr<T>(typed_ptr);
+    }
+
+    std::unique_ptr<AST::Program> build(std::istream& stream) {
+        antlr4::ANTLRInputStream input(stream);
+        ParaCLLexer lexer(&input);
+        antlr4::CommonTokenStream tokens(&lexer);
+        ParaCLParser parser(&tokens);
+
+        auto tree = parser.program();
+        if (parser.getNumberOfSyntaxErrors() > 0) {
+            std::cerr << "Syntax errors found. Aborting.\n";
+            return nullptr;
+        }
+
+        ParaCompiler::TreeBuilder builder;
+        return builder.build(tree);
     }
 
     std::unique_ptr<AST::Program> build(ParaCLParser::ProgramContext* ctx) {

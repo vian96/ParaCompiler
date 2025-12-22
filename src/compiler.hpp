@@ -1,14 +1,8 @@
-#include <ANTLRInputStream.h>
-#include <llvm/Support/raw_ostream.h>
-
 #include <istream>
 #include <memory>
 
-#include "ParaCLLexer.h"
-#include "ParaCLParser.h"
 #include "antlr_parser.hpp"
 #include "ast.hpp"
-#include "dump_visitor.hpp"
 #include "llvm_emitter.hpp"
 #include "symbol.hpp"
 #include "type_checker.hpp"
@@ -24,19 +18,8 @@ struct Compiler {
     Compiler(std::istream &stream) { compile_tu(stream); }
 
     bool compile_tu(std::istream &stream) {
-        antlr4::ANTLRInputStream input(stream);
-        ParaCLLexer lexer(&input);
-        antlr4::CommonTokenStream tokens(&lexer);
-        ParaCLParser parser(&tokens);
-
-        auto tree = parser.program();
-        if (parser.getNumberOfSyntaxErrors() > 0) {
-            std::cerr << "Syntax errors found. Aborting.\n";
-            return false;
-        }
-
         ParaCompiler::TreeBuilder builder;
-        ast = builder.build(tree);
+        ast = builder.build(stream);
         if (!ast) {
             std::cerr << "Failed to build AST.\n";
             return false;
@@ -50,7 +33,7 @@ struct Compiler {
 
         LLVMEmitter::LLVMEmitterVisitor ir_emit(type_manager);
         ir_emit.visit(*ast);
-        ir_emit.module.print(llvm::outs(), nullptr);
+        ir_emit.print();
         return true;
     }
 };

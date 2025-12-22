@@ -42,6 +42,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     llvm::Function *func;
     llvm::Value *last_value = nullptr;
 
+    void print() { module.print(llvm::outs(), nullptr); }
+
     llvm::Value *get_last_value() {
         if (!last_value)
             throw std::runtime_error(
