@@ -39,13 +39,15 @@ jobs:
     - name: Force Clang 20 Symlinks
       run: |
         echo "Removing old symlinks..."
-        sudo rm -f /usr/bin/clang /usr/bin/clang++ /usr/bin/clang-scan-deps /usr/bin/llvm-config /usr/bin/FileCheck
+        sudo rm -f /usr/bin/clang /usr/bin/clang++ /usr/bin/clang-scan-deps /usr/bin/llvm-config /usr/bin/FileCheck /usr/bin/lli /usr/bin/opt
 
         echo "Creating new symlinks to version 20..."
         sudo ln -s /usr/bin/clang-20 /usr/bin/clang
         sudo ln -s /usr/bin/clang++-20 /usr/bin/clang++
         sudo ln -s /usr/bin/clang-scan-deps-20 /usr/bin/clang-scan-deps
         sudo ln -s /usr/bin/llvm-config-20 /usr/bin/llvm-config
+        sudo ln -s /usr/bin/lli-20 /usr/bin/lli
+        sudo ln -s /usr/bin/opt-20 /usr/bin/opt
 
         if [ -f /usr/bin/FileCheck-20 ]; then
           sudo ln -s /usr/bin/FileCheck-20 /usr/bin/FileCheck
@@ -54,6 +56,7 @@ jobs:
         echo "Verifying versions..."
         clang++ --version
         llvm-config --version
+        lli --version
 
     - name: Checkout External Dependencies (Emulate Repo)
       run: |
