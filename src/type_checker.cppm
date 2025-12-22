@@ -1,14 +1,8 @@
 module;
 
-#include <memory>
-#include <set>
-#include <stdexcept>
-#include <string>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-
 export module ParaCompiler:TypeChecker;
+
+import std;
 
 import :AST;
 import :Symbol;

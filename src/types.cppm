@@ -1,20 +1,12 @@
 module;
-#include <algorithm>
-#include <cstddef>
-#include <map>
-#include <memory>
-#include <sstream>
-#include <stdexcept>
-#include <string>
-#include <unordered_map>
-#include <utility>
-#include <vector>
 
 export module ParaCompiler:Types;
 
 namespace ParaCompiler::Symbols {
 struct Symbol;
 }
+
+import std;
 
 export namespace ParaCompiler::Types {
 

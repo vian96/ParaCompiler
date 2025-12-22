@@ -1,5 +1,13 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.30)
+
+set(CMAKE_EXPERIMENTAL_CXX_MODULE_CMAKE_API "2182bf5c-ef0d-489a-91da-49dbc3090d2a")
+set(CMAKE_EXPERIMENTAL_CXX_MODULE_DYNDEP 1)
+
 project(ParaCL LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16.0)
@@ -7,13 +15,14 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     else()
         message(STATUS "CHECK: Clang version ${CMAKE_CXX_COMPILER_VERSION} - OK")
     endif()
+
+    add_compile_options(-stdlib=libc++)
+    add_link_options(-stdlib=libc++ -lc++abi)
+
+    add_compile_options(-fexperimental-library)
 else()
     message(WARNING "CHECK: You are not using Clang. C++ Modules support might be unstable.")
 endif()
-
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Java REQUIRED COMPONENTS Runtime)
 

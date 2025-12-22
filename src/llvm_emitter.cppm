@@ -15,15 +15,9 @@ module;
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/raw_ostream.h>
 
-#include <cassert>
-#include <stdexcept>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-
 export module ParaCompiler:LLVMEmitter;
+
+import std;
 
 import :AST;
 import :Symbol;

@@ -1,19 +1,12 @@
 module;
 
-#include <any>
-#include <iostream>
-#include <istream>
-#include <memory>
-#include <stdexcept>
-#include <string>
-#include <type_traits>
-#include <utility>
-
 #include "ParaCLBaseVisitor.h"
 #include "ParaCLLexer.h"
 #include "ParaCLParser.h"
 
 export module ParaCompiler:AntlrParser;
+
+import std;
 
 import :AST;
 import :Types;

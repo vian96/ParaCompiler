@@ -1,6 +1,4 @@
-#include <fstream>
-#include <iostream>
-
+import std;
 import ParaCompiler;
 
 int main(int argc, char* argv[]) {

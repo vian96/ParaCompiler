@@ -1,10 +1,8 @@
 module;
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
 
 export module ParaCompiler:AST;
+
+import std;
 
 import :Visitor;
 import :Types;

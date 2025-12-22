@@ -1,11 +1,8 @@
 module;
 
-#include <iostream>
-#include <istream>
-#include <memory>
-#include <cassert>
-
 export module ParaCompiler;
+
+import std;
 
 export import :AST;
 export import :Visitor;

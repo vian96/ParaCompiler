@@ -54,6 +54,7 @@ target_sources(paracl_core
     PUBLIC
     FILE_SET CXX_MODULES FILES ${MODULE_SOURCES}
 )
+set_property(TARGET paracl_core PROPERTY CXX_MODULE_STD ON)
 
 target_include_directories(paracl_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -84,6 +85,7 @@ target_compile_options(paracl_core PRIVATE -frtti)
 
 add_executable(paracl main.cpp)
 target_link_libraries(paracl PRIVATE paracl_core)
+set_property(TARGET paracl PROPERTY CXX_MODULE_STD ON)
 target_compile_options(paracl PRIVATE -frtti)
 
 add_library(parastdlib SHARED parastdlib.cpp)
