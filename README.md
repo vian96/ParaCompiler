@@ -99,7 +99,7 @@ Run
 make test-gen
 ```
 
-### Troubleshooting
+## Troubleshooting
 
 > CMake says it can't find LLVM 20
 
@@ -115,4 +115,4 @@ make rebuild
 
 > I don't want to install LLVM 20 on my main PC
 
-Totally fair. Check out the Dockerfile (it's on the way) in the root (or in the tools repo). You can build a container that has everything pre-installed.
+Totally fair. Check out the `Containerfile` (it has a handy `Makefile`) in the tools repo. You can build a container that has everything pre-installed.
