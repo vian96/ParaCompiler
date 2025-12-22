@@ -280,9 +280,12 @@ struct TypeChecker : Visitor::DefaultVisitor {
 
     void visit(AST::RetStmt &node) override {
         node.expr->accept(*this);
+        const Type *rest = nullptr;
         if (node.expr->type == manager.get_flexiblet())
-            node.expr = make_conversion_node_or_propagate(std::move(node.expr),
-                                                          manager.get_intt());
+            rest = manager.get_intt();
+        else
+            rest = node.expr->type;
+        node.expr = make_conversion_node_or_propagate(std::move(node.expr), rest);
     }
 
     void visit(AST::IndexExpr &node) override {

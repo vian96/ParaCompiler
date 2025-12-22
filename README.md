@@ -21,6 +21,7 @@ We went a bit crazy with modern C++, so under the hood, it uses C++ modules; bec
 - integers can only be extended, not truncated (implicit conversion to bool exists though)
 - && and || are actually bit-wise
 - shadowing variables from outer scopes is not supported because ParaCL grammatic is too ambigious. On the other hand, you cannot access any external variable from function
+- implicit conversion in return statement is not supported
 
 ## Getting the Code
 We use the Google `repo` tool to manage dependencies (like the grammar and scripts), because we can (hope you didn't expect a better explanation).
