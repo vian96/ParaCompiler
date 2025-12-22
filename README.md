@@ -7,16 +7,19 @@ We went a bit crazy with modern C++, so under the hood, it uses C++ modules; bec
 **Done:**
 - control flow
 - variable width integers (any width)
-- structs (except explicit type specification, through glue)
+- structs (except for explicit type specification, only using glue)
 - functions
 
 **In progress:**
-- arrays
-- vectors
+- arrays, vectors
 - templates
 - floats
-- repeat
-- methods
+- repeat, bind, methods
+
+***Note:***
+- integer literals types are taken from operands that they're used with. e.g. if you add a big number with int(8), this number will be truncated
+- integers can only be extended, not truncated (implicit conversion to bool exists tho)
+- && and || are actually bit-wise
 
 ## Getting the Code
 We use the Google `repo` tool to manage dependencies (like the grammar and scripts), because we can (hope you didn't expect a better explanation).
