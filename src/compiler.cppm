@@ -1,13 +1,23 @@
+module;
+
+#include <iostream>
 #include <istream>
 #include <memory>
+#include <cassert>
 
-#include "antlr_parser.hpp"
-#include "ast.hpp"
-#include "llvm_emitter.hpp"
-#include "symbol.hpp"
-#include "type_checker.hpp"
+export module ParaCompiler;
 
-namespace ParaCompiler {
+export import :AST;
+export import :Visitor;
+export import :Symbol;
+export import :Types;
+export import :AntlrParser;
+export import :TypeChecker;
+export import :LLVMEmitter;
+export import :DefaultVisitor;
+export import :DumpVisitor;
+
+export namespace ParaCompiler {
 
 struct Compiler {
     std::unique_ptr<AST::Program> ast = nullptr;
@@ -35,6 +45,14 @@ struct Compiler {
         ir_emit.visit(*ast);
         ir_emit.print();
         return true;
+    }
+
+    void dump_ast() {
+        assert(ast);
+        std::cerr << "=== AST Structure ===\n";
+        ParaCompiler::Visitor::DumpVisitor dumper;
+        ast->accept(dumper);
+        std::cerr << "=====================\n";
     }
 };
 

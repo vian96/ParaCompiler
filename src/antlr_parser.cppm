@@ -1,4 +1,4 @@
-#pragma once
+module;
 
 #include <any>
 #include <iostream>
@@ -11,9 +11,13 @@
 #include "ParaCLBaseVisitor.h"
 #include "ParaCLLexer.h"
 #include "ParaCLParser.h"
-#include "ast.hpp"
 
-namespace ParaCompiler {
+export module ParaCompiler:AntlrParser;
+
+import :AST;
+import :Types;
+
+export namespace ParaCompiler {
 
 using Any = std::any;
 

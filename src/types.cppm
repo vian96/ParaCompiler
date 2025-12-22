@@ -1,4 +1,4 @@
-#pragma once
+module;
 
 #include <algorithm>
 #include <cstddef>
@@ -9,7 +9,9 @@
 #include <unordered_map>
 #include <vector>
 
-namespace ParaCompiler::Types {
+export module ParaCompiler:Types;
+
+export namespace ParaCompiler::Types {
 
 struct Type {
     static std::string ptr_to_str(const Types::Type *t) {

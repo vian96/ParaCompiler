@@ -1,4 +1,4 @@
-#pragma once
+module;
 
 #include <llvm-21/llvm/IR/DerivedTypes.h>
 #include <llvm/ADT/APInt.h>
@@ -21,10 +21,13 @@
 #include <unordered_map>
 #include <utility>
 
-#include "ast.hpp"
-#include "default_visitor.hpp"
-#include "symbol.hpp"
-#include "types.hpp"
+export module ParaCompiler:LLVMEmitter;
+
+import :AST;
+import :Symbol;
+import :Visitor;
+import :Types;
+import :DefaultVisitor;
 
 namespace ParaCompiler::LLVMEmitter {
 

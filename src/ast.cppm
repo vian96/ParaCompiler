@@ -1,21 +1,18 @@
-#pragma once
-
-#include <algorithm>
-#include <cstddef>
-#include <cstdint>
+module;
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
-#include "types.hpp"
-#include "visitor.hpp"
+export module ParaCompiler:AST;
 
-namespace ParaCompiler::Symbols {
+import :Visitor;
+import :Types;
+
+export namespace ParaCompiler::Symbols {
 struct Symbol;
 }
 
-namespace ParaCompiler::AST {
+export namespace ParaCompiler::AST {
 
 struct Node {
     virtual void accept(Visitor::Visitor &visitor) = 0;

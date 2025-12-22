@@ -1,4 +1,4 @@
-#pragma once
+module;
 
 #include <deque>
 #include <iostream>
@@ -6,11 +6,14 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
-#include "ast.hpp"
-#include "default_visitor.hpp"
-#include "types.hpp"
-#include "visitor.hpp"
+export module ParaCompiler:Symbol;
+
+import :Types;
+import :DefaultVisitor;
+import :AST;
+import :Visitor;
 
 namespace ParaCompiler::Symbols {
 

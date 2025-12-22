@@ -1,6 +1,6 @@
-#pragma once
+export module ParaCompiler:Visitor;
 
-namespace ParaCompiler::AST {
+export namespace ParaCompiler::AST {
 struct Node;
 struct Statement;
 struct Program;
@@ -25,7 +25,7 @@ struct LValToRVal;
 struct IndexExpr;
 }  // namespace ParaCompiler::AST
 
-namespace ParaCompiler::Visitor {
+export namespace ParaCompiler::Visitor {
 
 struct Visitor {
     Visitor() = default;

@@ -33,26 +33,27 @@ target_link_libraries(paracl_parser PUBLIC antlr4_static)
 
 target_compile_options(paracl_parser PRIVATE -frtti)
 
-set(CORE_HEADERS
-    ast.hpp
-    visitor.hpp
-    antlr_parser.hpp
-    dump_visitor.hpp
-    default_visitor.hpp
-)
+set(CORE_HEADERS)
 
 set(MODULE_SOURCES
-    # modules/Compiler.ixx
+    types.cppm
+    symbol.cppm
+    visitor.cppm
+    ast.cppm
+    type_checker.cppm
+    default_visitor.cppm
+    dump_visitor.cppm
+    llvm_emitter.cppm
+    antlr_parser.cppm
+    compiler.cppm
 )
 
 add_library(paracl_core STATIC ${CORE_HEADERS})
 
-if(MODULE_SOURCES)
-    target_sources(paracl_core
-        PUBLIC
-        FILE_SET CXX_MODULES FILES ${MODULE_SOURCES}
-    )
-endif()
+target_sources(paracl_core
+    PUBLIC
+    FILE_SET CXX_MODULES FILES ${MODULE_SOURCES}
+)
 
 target_include_directories(paracl_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

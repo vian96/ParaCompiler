@@ -1,4 +1,4 @@
-#pragma once
+module;
 
 #include <memory>
 #include <set>
@@ -8,10 +8,13 @@
 #include <utility>
 #include <vector>
 
-#include "ast.hpp"
-#include "default_visitor.hpp"
-#include "symbol.hpp"
-#include "types.hpp"
+export module ParaCompiler:TypeChecker;
+
+import :AST;
+import :Symbol;
+import :Visitor;
+import :Types;
+import :DefaultVisitor;
 
 namespace ParaCompiler::Types {
 
