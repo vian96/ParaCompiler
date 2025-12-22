@@ -1,4 +1,5 @@
-// RUN: %paracl %s | %lli -load=%lib | FileCheck %s
+// RUN: %paracl %s > %t.ll
+// RUN: %lli -load=%lib %t.ll | FileCheck %s
 
 v0 : int = 42; output(0, v0);
 
