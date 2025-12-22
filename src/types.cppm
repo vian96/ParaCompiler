@@ -91,7 +91,7 @@ struct FuncType : Type {
     }
 
     virtual size_t get_width() const override {
-        throw std::runtime_error("unable to get width of struct type!");
+        throw std::runtime_error("unable to get width of func type!");
     }
 
     bool is_similar(const FuncType &other) const {

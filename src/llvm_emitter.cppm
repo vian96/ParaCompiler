@@ -411,7 +411,7 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         auto ftype = dynamic_cast<const Types::FuncType *>(node.type);
         auto lft = get_llvm_func(ftype);
         llvm::Function *f = llvm::Function::Create(lft, llvm::Function::ExternalLinkage,
-                                                   "user.func.", module);
+                                                   "user.func", module);
         auto prevBB = builder.GetInsertBlock();
         auto entryBB = llvm::BasicBlock::Create(ctx, "entry", f);
         builder.SetInsertPoint(entryBB);
