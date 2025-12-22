@@ -17,7 +17,7 @@ jobs:
     - name: Install Base Dependencies
       run: |
         sudo apt update
-        sudo apt install -y wget lsb-release software-properties-common gnupg ninja-build default-jre make
+        sudo apt install -y wget lsb-release software-properties-common gnupg ninja-build default-jre make python3-pip
 
     - name: Install CMake 3.31
       run: |
@@ -31,6 +31,10 @@ jobs:
         chmod +x llvm.sh
         sudo ./llvm.sh 20
         sudo apt install -y clang-tools-20
+
+    - name: Install Testing Tools (LIT)
+      run: |
+        pip3 install lit
 
     - name: Force Clang 20 Symlinks
       run: |
