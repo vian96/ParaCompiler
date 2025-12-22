@@ -2,24 +2,40 @@ cmake_minimum_required(VERSION 3.30)
 
 set(CMAKE_EXPERIMENTAL_CXX_MODULE_CMAKE_API "2182bf5c-ef0d-489a-91da-49dbc3090d2a")
 set(CMAKE_EXPERIMENTAL_CXX_MODULE_DYNDEP 1)
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
 
 project(ParaCL LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_EXTENSIONS ON)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16.0)
-        message(FATAL_ERROR "CRITICAL: Clang version ${CMAKE_CXX_COMPILER_VERSION} is too old. C++ Modules require Clang 16+ (Recommended: 18+).")
-    else()
-        message(STATUS "CHECK: Clang version ${CMAKE_CXX_COMPILER_VERSION} - OK")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 18.0)
+        message(FATAL_ERROR "CRITICAL: Clang 18+ required.")
     endif()
+    message(STATUS "CHECK: Clang version ${CMAKE_CXX_COMPILER_VERSION} - OK")
 
     add_compile_options(-stdlib=libc++)
     add_link_options(-stdlib=libc++ -lc++abi)
 
-    add_compile_options(-fexperimental-library)
+    find_path(STD_MODULE_PATH
+        NAMES std.cppm
+        HINTS
+            "/usr/share/libc++/v1"             # OpenSUSE
+            "/usr/lib/llvm-20/include/c++/v1"  # Ubuntu
+            "/usr/lib64/llvm-20/include/c++/v1"
+            "${LLVM_INCLUDE_DIRS}/c++/v1"
+        DOC "Path to libc++ module sources"
+    )
+
+    if(STD_MODULE_PATH)
+        message(STATUS "Found libc++ module sources in: ${STD_MODULE_PATH}")
+        include_directories(SYSTEM ${STD_MODULE_PATH})
+    else()
+        message(WARNING "Could not find std.cppm! 'import std;' requires libc++ sources.")
+    endif()
+
 else()
     message(WARNING "CHECK: You are not using Clang. C++ Modules support might be unstable.")
 endif()
