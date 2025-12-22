@@ -291,6 +291,14 @@ class TreeBuilder : public ParaCLBaseVisitor {
         return static_cast<AST::Node *>(node);
     }
 
+    Any visitCallExpr(ParaCLParser::CallExprContext *ctx) override {
+        auto *node = new AST::Call();
+        node->func = take<AST::Expr>(visit(ctx->expr(0)));
+        for (int i = 1; i < ctx->expr().size(); i++)
+            node->args.push_back(take<AST::Expr>(visit(ctx->expr(i))));
+        return static_cast<AST::Node *>(node);
+    }
+
     Any visitDotExpr(ParaCLParser::DotExprContext *ctx) override {
         auto *node = new AST::DotExpr();
         node->left = take<AST::Expr>(visit(ctx->expr()));

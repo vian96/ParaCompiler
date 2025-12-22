@@ -60,6 +60,11 @@ class DefaultVisitor : public Visitor {
     void visit(AST::Id &) override {}
     void visit(AST::Input &) override {}
 
+    virtual void visit(AST::Call &node) override {
+        node.func->accept(*this);
+        for (const auto &arg : node.args)
+            if (arg) arg->accept(*this);
+    }
     virtual void visit(AST::Block &node) override {
         for (const auto &stmt : node.statements)
             if (stmt) stmt->accept(*this);

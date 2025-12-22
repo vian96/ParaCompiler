@@ -190,5 +190,12 @@ struct FuncBody : Expr {
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 
+struct Call : Expr {
+    std::unique_ptr<Expr> func;
+    std::vector<std::unique_ptr<Expr>> args;
+
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
 #undef PARACOMPILER_AST_OVERRIDE_ACCEPT
 };  // namespace ParaCompiler::AST

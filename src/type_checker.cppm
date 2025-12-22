@@ -124,6 +124,23 @@ struct TypeChecker : Visitor::DefaultVisitor {
         node.val = make_conversion_node_or_propagate(std::move(node.val), comt);
     }
 
+    virtual void visit(AST::Call &node) override {
+        node.func->accept(*this);
+        auto ft = dynamic_cast<const FuncType *>(node.func->type);
+        if (!ft)
+            throw std::runtime_error("can only call functions but got " +
+                                     Types::Type::ptr_to_str(node.func->type));
+        node.type = ft->res_type;
+        for (int i = 0; i < node.args.size(); i++) {
+            auto &arg = node.args[i];
+            if (arg) {
+                arg->accept(*this);
+                arg =
+                    make_conversion_node_or_propagate(std::move(arg), ft->args[i].second);
+            }
+        }
+    }
+
     void visit(AST::IfStmt &node) override {
         node.expr->accept(*this);
         node.expr =

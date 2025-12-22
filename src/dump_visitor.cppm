@@ -132,6 +132,18 @@ class DumpVisitor : public Visitor {
         indent_level--;
     };
 
+    virtual void visit(AST::Call &node) override {
+        print_indent();
+        std::cerr << "Call\n";
+
+        indent_level++;
+        if (node.func) node.func->accept(*this);
+        for (const auto &arg : node.args)
+            if (arg) arg->accept(*this);
+
+        indent_level--;
+    };
+
     virtual void visit(AST::ForStmt &node) override {
         print_indent();
         std::cerr << "For [" << node.id << "]\n";

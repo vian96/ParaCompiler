@@ -25,6 +25,7 @@ struct DotExpr;
 struct LValToRVal;
 struct IndexExpr;
 struct FuncBody;
+struct Call;
 }  // namespace ParaCompiler::AST
 
 export namespace ParaCompiler::Visitor {
@@ -59,6 +60,7 @@ struct Visitor {
     virtual void visit(AST::IfStmt &) = 0;
     virtual void visit(AST::FuncBody &) = 0;
     virtual void visit(AST::RetStmt &) = 0;
+    virtual void visit(AST::Call &) = 0;
 };
 
 }  // namespace ParaCompiler::Visitor

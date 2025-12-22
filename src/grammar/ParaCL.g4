@@ -27,6 +27,7 @@ glueEntry: expr (':' ID)?;
 expr
     : '(' expr ')' # BracketExpr
     | '{' statement+ '}' # FuncExpr
+    | expr '(' expr (',' expr)* ')' # CallExpr
     | input        # InputExpr
     | INT          # IntExpr
     | ID           # IdExpr
