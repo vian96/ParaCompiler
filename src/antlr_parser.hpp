@@ -64,9 +64,17 @@ class TreeBuilder : public ParaCLBaseVisitor {
 
     Any visitAssignment(ParaCLParser::AssignmentContext* ctx) override {
         auto* node = new AST::Assignment();
-        node->name = ctx->ID()->getText();
+        node->left = take<AST::Expr>(visit(ctx->expr(0)));
+        if (auto id = dynamic_cast<AST::Id*>(node->left.get()))
+            node->name = id->val;
+        else if (ctx->typeSpec())
+            throw std::runtime_error("can only specify type on vardecl");
+        if (!node->left->is_lvalue()) throw std::runtime_error("can't assign to rvalue");
+
         if (ctx->typeSpec()) node->typeSpec = take<AST::TypeSpec>(visit(ctx->typeSpec()));
-        if (ctx->expr()) node->val = take<AST::Expr>(visit(ctx->expr()));
+
+        if (ctx->expr().size() > 1) node->val = take<AST::Expr>(visit(ctx->expr(1)));
+
         return static_cast<AST::Node*>(node);
     }
 
@@ -180,6 +188,28 @@ class TreeBuilder : public ParaCLBaseVisitor {
         if (ctx->input()->INT()->getText() != "0")
             throw std::runtime_error("output only takes 0 as the first arg");
         auto* node = new AST::Input();
+        return static_cast<AST::Node*>(node);
+    }
+
+    Any visitDotExpr(ParaCLParser::DotExprContext* ctx) override {
+        auto* node = new AST::DotExpr();
+        node->left = take<AST::Expr>(visit(ctx->expr()));
+        node->id = ctx->ID()->getText();
+        return static_cast<AST::Node*>(node);
+    }
+
+    Any visitIndexExpr(ParaCLParser::IndexExprContext* ctx) override {
+        auto* node = new AST::IndexExpr();
+        node->left = take<AST::Expr>(visit(ctx->expr()));
+        node->ind = std::stoll(ctx->INT()->getText());
+        return static_cast<AST::Node*>(node);
+    }
+
+    Any visitGlueExpr(ParaCLParser::GlueExprContext* ctx) override {
+        auto* node = new AST::Glue();
+        for (auto& entry : ctx->glueEntry())
+            node->vals.push_back(AST::GlueEntry(entry->ID() ? entry->ID()->getText() : "",
+                                                take<AST::Expr>(visit(entry->expr()))));
         return static_cast<AST::Node*>(node);
     }
 };

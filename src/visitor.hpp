@@ -19,6 +19,10 @@ struct ForStmt;
 struct WhileStmt;
 struct IfStmt;
 struct Conversion;
+struct Glue;
+struct DotExpr;
+struct LValToRVal;
+struct IndexExpr;
 }  // namespace ParaCompiler::AST
 
 namespace ParaCompiler::Visitor {
@@ -39,6 +43,10 @@ struct Visitor {
     virtual void visit(AST::Id &) = 0;
     virtual void visit(AST::Input &) = 0;
     virtual void visit(AST::Conversion &) = 0;
+    virtual void visit(AST::Glue &) = 0;
+    virtual void visit(AST::DotExpr &) = 0;
+    virtual void visit(AST::LValToRVal &) = 0;
+    virtual void visit(AST::IndexExpr &) = 0;
 
     virtual void visit(AST::Assignment &) = 0;
     virtual void visit(AST::Print &) = 0;

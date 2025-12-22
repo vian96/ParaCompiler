@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -40,6 +41,7 @@ struct Program : Node {
 };
 
 struct Expr : Node {
+    virtual bool is_lvalue() const { return false; }
     const Types::Type *type = nullptr;
 
     PARACOMPILER_AST_OVERRIDE_ACCEPT
@@ -55,8 +57,8 @@ struct Block : Node {
 struct Assignment : Statement {
     std::string name;
     std::unique_ptr<TypeSpec> typeSpec = nullptr;
+    std::unique_ptr<Expr> left = nullptr;
     std::unique_ptr<Expr> val = nullptr;
-    Symbols::Symbol *sym = nullptr;
 
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -93,6 +95,7 @@ struct IntLit : Expr {
 };
 
 struct Id : Expr {
+    bool is_lvalue() const override { return true; }
     std::string val;
     Symbols::Symbol *sym;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
@@ -135,6 +138,38 @@ struct Conversion : Expr {
         type = res_type_;
     }
 
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct GlueEntry {
+    std::string name;
+    std::unique_ptr<Expr> val;
+};
+
+struct Glue : Expr {
+    // because it creates a temporary alloca and uses it
+    bool is_lvalue() const override { return true; }
+    std::vector<GlueEntry> vals;
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct DotExpr : Expr {
+    bool is_lvalue() const override { return true; }
+    std::unique_ptr<Expr> left;
+    std::string id;
+    size_t field_ind;
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct LValToRVal : Expr {
+    std::unique_ptr<Expr> expr;
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct IndexExpr : Expr {
+    bool is_lvalue() const override { return true; }
+    std::unique_ptr<Expr> left;
+    size_t ind;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 

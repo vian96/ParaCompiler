@@ -19,10 +19,6 @@ class DumpVisitor : public Visitor {
         if (indent_level > 0) std::cerr << "-- ";
     }
 
-    std::string type_to_str(const Types::Type *t) {
-        return t ? std::string(*t) : "nullType";
-    }
-
    public:
     void visit(AST::Program &p) override {
         print_indent();
@@ -38,10 +34,11 @@ class DumpVisitor : public Visitor {
     // --- Statements ---
     void visit(AST::Assignment &node) override {
         print_indent();
-        std::cerr << "Assignment type: [" << type_to_str(node.sym->type)
+        std::cerr << "Assignment type: [" << Types::Type::ptr_to_str(node.left->type)
                   << "] [Name: " << node.name << "]\n";
 
         indent_level++;
+        node.left->accept(*this);
         if (node.typeSpec) node.typeSpec->accept(*this);
         if (node.val) node.val->accept(*this);
         indent_level--;
@@ -58,7 +55,7 @@ class DumpVisitor : public Visitor {
 
     void visit(AST::Conversion &node) override {
         print_indent();
-        std::cerr << "Conversion to [" << type_to_str(node.type) << "]\n";
+        std::cerr << "Conversion to [" << Types::Type::ptr_to_str(node.type) << "]\n";
 
         indent_level++;
         if (node.expr) node.expr->accept(*this);
@@ -77,7 +74,7 @@ class DumpVisitor : public Visitor {
     // --- Expressions & Leaves ---
     void visit(AST::BinExpr &node) override {
         print_indent();
-        std::cerr << "BinExpr type: [" << type_to_str(node.type) << "] [" << node.op
+        std::cerr << "BinExpr type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.op
                   << "]\n";
 
         indent_level++;
@@ -88,7 +85,7 @@ class DumpVisitor : public Visitor {
 
     void visit(AST::UnaryExpr &node) override {
         print_indent();
-        std::cerr << "UnaryExpr type: [" << type_to_str(node.type) << "] [" << node.op
+        std::cerr << "UnaryExpr type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.op
                   << "]\n";
 
         indent_level++;
@@ -98,18 +95,18 @@ class DumpVisitor : public Visitor {
 
     void visit(AST::IntLit &node) override {
         print_indent();
-        std::cerr << "IntLit type: [" << type_to_str(node.type) << "] [" << node.val
+        std::cerr << "IntLit type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.val
                   << "]\n";
     }
 
     void visit(AST::Id &node) override {
         print_indent();
-        std::cerr << "Id type: [" << type_to_str(node.type) << "] [" << node.val << "]\n";
+        std::cerr << "Id type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.val << "]\n";
     }
 
     void visit(AST::Input &node) override {
         print_indent();
-        std::cerr << "InputExpr type: [" << type_to_str(node.type) << "]\n";
+        std::cerr << "InputExpr type: [" << Types::Type::ptr_to_str(node.type) << "]\n";
     }
 
     void visit(AST::TypeSpec &node) override {
@@ -179,6 +176,37 @@ class DumpVisitor : public Visitor {
     void visit(AST::Expr &) override {
         print_indent();
         std::cerr << "Empty Expr!\n";
+    }
+
+    void visit(AST::Glue &node) override {
+        print_indent();
+        std::cerr << "Glue:";
+        if (node.type) std::cerr << " [" << std::string(*node.type) << "]";
+        std::cerr << '\n';
+        indent_level++;
+        for (auto &val : node.vals) val.val->accept(*this);
+        indent_level--;
+    }
+    void visit(AST::DotExpr &node) override {
+        print_indent();
+        std::cerr << "DotExpr: Id: " << node.id << ", Ind: " << node.field_ind << '\n';
+        indent_level++;
+        node.left->accept(*this);
+        indent_level--;
+    }
+    void visit(AST::LValToRVal &node) override {
+        print_indent();
+        std::cerr << "LValToRVal\n";
+        indent_level++;
+        node.expr->accept(*this);
+        indent_level--;
+    }
+    void visit(AST::IndexExpr &node) override {
+        print_indent();
+        std::cerr << "IndexExpr: Ind: " << node.ind << '\n';
+        indent_level++;
+        node.left->accept(*this);
+        indent_level--;
     }
 };
 

@@ -13,6 +13,7 @@ class DefaultVisitor : public Visitor {
     }
 
     void visit(AST::Assignment &node) override {
+        node.left->accept(*this);
         if (node.typeSpec) node.val->accept(*this);
         if (node.val) node.val->accept(*this);
     }
@@ -34,9 +35,14 @@ class DefaultVisitor : public Visitor {
         node.right->accept(*this);
     }
 
-    void visit(AST::UnaryExpr &node) override {
-        node.expr->accept(*this);
+    void visit(AST::UnaryExpr &node) override { node.expr->accept(*this); }
+
+    void visit(AST::Glue &node) override {
+        for (auto &val : node.vals) val.val->accept(*this);
     }
+    void visit(AST::DotExpr &node) override { node.left->accept(*this); }
+    void visit(AST::LValToRVal &node) override { node.expr->accept(*this); }
+    void visit(AST::IndexExpr &node) override { node.left->accept(*this); }
 
     void visit(AST::Node &) override {}
     void visit(AST::Expr &) override {}
@@ -48,11 +54,11 @@ class DefaultVisitor : public Visitor {
     void visit(AST::Input &) override {}
 
     virtual void visit(AST::Block &node) override {
-        for (const auto& stmt : node.statements)
+        for (const auto &stmt : node.statements)
             if (stmt) stmt->accept(*this);
     }
     virtual void visit(AST::ForStmt &node) override {
-        for (auto &slice:node.slice) slice->accept(*this);
+        for (auto &slice : node.slice) slice->accept(*this);
         if (node.container) node.container->accept(*this);
         node.body->accept(*this);
     }
