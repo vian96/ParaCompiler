@@ -1,14 +1,17 @@
-#pragma once
+module;
 
 #include <iostream>
 #include <memory>
 
-#include "ast.hpp"
-#include "symbol.hpp"
-#include "types.hpp"
-#include "visitor.hpp"
+export module ParaCompiler:DumpVisitor;
 
-namespace ParaCompiler::Visitor {
+import :AST;
+import :Symbol;
+import :Visitor;
+import :Types;
+import :DefaultVisitor;
+
+export namespace ParaCompiler::Visitor {
 
 class DumpVisitor : public Visitor {
     int indent_level = 0;

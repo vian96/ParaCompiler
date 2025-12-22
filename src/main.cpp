@@ -1,8 +1,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "compiler.hpp"
-#include "dump_visitor.hpp"
+import ParaCompiler;
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -30,10 +29,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     if (dump_ast) {
-        std::cerr << "=== AST Structure ===\n";
-        ParaCompiler::Visitor::DumpVisitor dumper;
-        ast->accept(dumper);
-        std::cerr << "=====================\n";
+        compiler.dump_ast();
     }
 
     return 0;

@@ -1,9 +1,13 @@
-#pragma once
+module;
 
-#include "ast.hpp"
-#include "visitor.hpp"
+#include <vector>
 
-namespace ParaCompiler::Visitor {
+export module ParaCompiler:DefaultVisitor;
+
+import :AST;
+import :Visitor;
+
+export namespace ParaCompiler::Visitor {
 
 class DefaultVisitor : public Visitor {
    public:
