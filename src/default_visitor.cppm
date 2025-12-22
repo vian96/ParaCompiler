@@ -51,12 +51,20 @@ class DefaultVisitor : public Visitor {
     void visit(AST::Node &) override {}
     void visit(AST::Expr &) override {}
     void visit(AST::Statement &) override {}
-    void visit(AST::TypeSpec &) override {}
+
+    void visit(AST::TypeSpec &node) override {
+        for (auto &i : node.args) i.first->accept(*this);
+    }
 
     void visit(AST::IntLit &) override {}
     void visit(AST::Id &) override {}
     void visit(AST::Input &) override {}
 
+    virtual void visit(AST::Call &node) override {
+        node.func->accept(*this);
+        for (const auto &arg : node.args)
+            if (arg) arg->accept(*this);
+    }
     virtual void visit(AST::Block &node) override {
         for (const auto &stmt : node.statements)
             if (stmt) stmt->accept(*this);
@@ -75,6 +83,8 @@ class DefaultVisitor : public Visitor {
         node.trueb->accept(*this);
         if (node.falseb) node.falseb->accept(*this);
     }
+    virtual void visit(AST::FuncBody &node) override { node.body->accept(*this); }
+    virtual void visit(AST::RetStmt &node) override { node.expr->accept(*this); }
 };
 
 }  // namespace ParaCompiler::Visitor

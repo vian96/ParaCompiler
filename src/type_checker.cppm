@@ -23,6 +23,22 @@ struct TypeChecker : Visitor::DefaultVisitor {
 
     TypeChecker(TypeManager &manager_) : manager(manager_) {}
 
+    const Types::Type *get_from_typespec(AST::TypeSpec *spec) {
+        if (spec->is_int)
+            return manager.get_intt(spec->int_width);
+        else if (spec->is_func) {
+            std::vector<std::pair<Symbols::Symbol *, const Type *>> argts;
+            for (auto &i : spec->args) {
+                auto argt = get_from_typespec(i.second.get());
+                i.first->type = i.first->sym->type = argt;
+                argts.emplace_back(i.first->sym, argt);
+            }
+            return manager.get_func_type(argts, get_from_typespec(spec->ret_spec.get()));
+        } else
+            throw std::runtime_error("not implemented type-spec like this one: " +
+                                     spec->name);
+    }
+
     std::unique_ptr<AST::Expr> make_conversion_node_or_propagate(
         std::unique_ptr<AST::Expr> expr, const Type *t) {
         if (expr->is_lvalue()) {
@@ -70,16 +86,13 @@ struct TypeChecker : Visitor::DefaultVisitor {
             throw std::runtime_error(
                 "unexpected: no val and typespec for assignment node");
 
-        if (node.val) node.val->accept(*this);
+        if (node.typeSpec)
+            node.left->type = id->type = id->sym->type =
+                get_from_typespec(node.typeSpec.get());
 
-        if (node.typeSpec) {
-            if (node.typeSpec->is_int)
-                id->type = id->sym->type = manager.get_intt(node.typeSpec->int_width);
-            else
-                throw std::runtime_error(
-                    "not implemented not-int type-spec like this one: " +
-                    node.typeSpec->name);
-        }
+        if (node.val) node.val->accept(*this);
+        if (auto ft = dynamic_cast<const FuncType *>(id->type)) node.val->type = ft;
+
         if (!id->sym->type && node.val) {
             if (node.val->type != manager.get_flexiblet()) {
                 id->type = id->sym->type = node.val->type;
@@ -101,6 +114,16 @@ struct TypeChecker : Visitor::DefaultVisitor {
         id->accept(*this);
 
         // both val and sym.type are present
+        if (auto ft = dynamic_cast<const FuncType *>(node.left->type)) {
+            if (dynamic_cast<const FuncType *>(node.val->type))
+                node.val = make_conversion_node_or_propagate(std::move(node.val), ft);
+            else
+                throw std::runtime_error("an attempt to assign non-func to func! " +
+                                         Types::Type::ptr_to_str(node.val->type) +
+                                         " is assigned to " +
+                                         Types::Type::ptr_to_str(node.left->type));
+        }
+
         auto comt = manager.get_common_type(id->sym->type, node.val->type);
         if (comt != id->sym->type)
             throw std::runtime_error(
@@ -109,6 +132,26 @@ struct TypeChecker : Visitor::DefaultVisitor {
                 std::string(*id->sym->type) +
                 " for var and: " + std::string(*node.val->type) + " for expr");
         node.val = make_conversion_node_or_propagate(std::move(node.val), comt);
+    }
+
+    virtual void visit(AST::Call &node) override {
+        node.func->accept(*this);
+        // lval->rval conv
+        auto leftt = node.func->type;
+        node.func = make_conversion_node_or_propagate(std::move(node.func), leftt);
+        auto ft = dynamic_cast<const FuncType *>(node.func->type);
+        if (!ft)
+            throw std::runtime_error("can only call functions but got " +
+                                     Types::Type::ptr_to_str(node.func->type));
+        node.type = ft->res_type;
+        for (int i = 0; i < node.args.size(); i++) {
+            auto &arg = node.args[i];
+            if (arg) {
+                arg->accept(*this);
+                arg =
+                    make_conversion_node_or_propagate(std::move(arg), ft->args[i].second);
+            }
+        }
     }
 
     void visit(AST::IfStmt &node) override {

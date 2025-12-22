@@ -3,3 +3,5 @@ BasedOnStyle: Google # Or LLVM, WebKit, etc.
 IndentWidth: 4
 UseTab: Never
 ColumnLimit: 90
+PointerAlignment: Right
+DerivePointerAlignment: false

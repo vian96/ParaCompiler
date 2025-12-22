@@ -1,6 +1,7 @@
 module;
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 export module ParaCompiler:AST;
@@ -8,7 +9,7 @@ export module ParaCompiler:AST;
 import :Visitor;
 import :Types;
 
-export namespace ParaCompiler::Symbols {
+namespace ParaCompiler::Symbols {
 struct Symbol;
 }
 
@@ -21,14 +22,6 @@ struct Node {
 
 #define PARACOMPILER_AST_OVERRIDE_ACCEPT \
     void accept(Visitor::Visitor &v) override { v.visit(*this); }
-
-struct TypeSpec : Node {
-    std::string name;
-    bool is_int = true;  // TODO: make acutal check
-    size_t int_width = 32;
-
-    PARACOMPILER_AST_OVERRIDE_ACCEPT
-};
 
 struct Statement : Node {};
 
@@ -51,6 +44,29 @@ struct Block : Node {
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 
+struct Id : Expr {
+    bool is_lvalue() const override { return true; }
+    std::string val;
+    Symbols::Symbol *sym = nullptr;
+
+    Id(std::string name) : val(std::move(name)) {}
+    Id() {}
+
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct TypeSpec : Node {
+    std::string name;
+    bool is_int = true;
+    size_t int_width = 32;
+
+    bool is_func = false;
+    std::vector<std::pair<std::unique_ptr<Id>, std::unique_ptr<TypeSpec>>> args;
+    std::unique_ptr<TypeSpec> ret_spec = nullptr;
+
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
 struct Assignment : Statement {
     std::string name;
     std::unique_ptr<TypeSpec> typeSpec = nullptr;
@@ -61,6 +77,11 @@ struct Assignment : Statement {
 };
 
 struct Print : Statement {
+    std::unique_ptr<Expr> expr;
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct RetStmt : Statement {
     std::unique_ptr<Expr> expr;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -88,13 +109,6 @@ struct BinExpr : Expr {
 struct IntLit : Expr {
     // TODO: compile time constants are max parsed 64 bits
     int64_t val;
-    PARACOMPILER_AST_OVERRIDE_ACCEPT
-};
-
-struct Id : Expr {
-    bool is_lvalue() const override { return true; }
-    std::string val;
-    Symbols::Symbol *sym;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 
@@ -167,6 +181,19 @@ struct IndexExpr : Expr {
     bool is_lvalue() const override { return true; }
     std::unique_ptr<Expr> left;
     size_t ind;
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct FuncBody : Expr {
+    std::unique_ptr<Block> body;
+
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct Call : Expr {
+    std::unique_ptr<Expr> func;
+    std::vector<std::unique_ptr<Expr>> args;
+
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 

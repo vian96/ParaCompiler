@@ -1,15 +1,20 @@
 module;
-
 #include <algorithm>
 #include <cstddef>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 export module ParaCompiler:Types;
+
+namespace ParaCompiler::Symbols {
+struct Symbol;
+}
 
 export namespace ParaCompiler::Types {
 
@@ -69,9 +74,44 @@ struct StructType : Type {
     }
 };
 
+struct FuncType : Type {
+    std::vector<std::pair<Symbols::Symbol *, const Type *>> args;
+    const Type *res_type = nullptr;
+
+    FuncType(std::vector<std::pair<Symbols::Symbol *, const Type *>> args_,
+             const Type *res_type_)
+        : args(std::move(args_)), res_type(res_type_) {}
+
+    operator std::string() const override {
+        std::stringstream out;
+        out << "FuncType: [";
+        for (auto &arg : args) out << arg.first << ": " << ptr_to_str(arg.second) << ", ";
+        out << "] res_type: " << ptr_to_str(res_type);
+        return out.str();
+    }
+
+    virtual size_t get_width() const override {
+        throw std::runtime_error("unable to get width of struct type!");
+    }
+
+    bool is_similar(const FuncType &other) const {
+        if (res_type != other.res_type) return false;
+        if (args.size() != other.args.size()) return false;
+        for (int i = 0; i < args.size(); i++)
+            if (args[i].second != other.args[i].second) return false;
+        return true;
+    }
+};
+
 struct TypeManager {
     std::vector<std::unique_ptr<Type>> types;
     std::unordered_map<size_t, IntType *> ints;
+    // map so no need for hash
+    std::map<
+        std::pair<std::vector<std::pair<Symbols::Symbol *, const Type *>>, const Type *>,
+        FuncType *>
+        funcs;
+
     BoolType *boolt = nullptr;
     FlexibleType *flext = nullptr;
 
@@ -101,6 +141,8 @@ struct TypeManager {
     }
 
     const Type *get_common_type(const Type *t1, const Type *t2) {
+        if (!t1) return t2;
+        if (!t2) return t1;
         if (t1 == t2) return t1;
         // at least one is int
         // FIXME: if bool is with flexible??
@@ -112,12 +154,24 @@ struct TypeManager {
         return get_intt(width);
     }
 
-    const Type *get_struct_type(std::vector<const Type *> fields,
-                                std::unordered_map<std::string, size_t> names) {
+    const StructType *get_struct_type(std::vector<const Type *> fields,
+                                      std::unordered_map<std::string, size_t> names) {
         auto structt = std::make_unique<StructType>(std::move(fields), std::move(names));
         auto structp = structt.get();
         types.push_back(std::move(structt));
         return structp;
+    }
+
+    const FuncType *get_func_type(
+        std::vector<std::pair<Symbols::Symbol *, const Type *>> args,
+        const Type *res_type) {
+        if (auto it = funcs.find(std::make_pair(args, res_type)); it != funcs.end())
+            return it->second;
+
+        auto funct = std::make_unique<FuncType>(std::move(args), res_type);
+        auto funcp = funct.get();
+        types.push_back(std::move(funct));
+        return funcp;
     }
 };
 
