@@ -1,6 +1,7 @@
 module;
 #include <algorithm>
 #include <cstddef>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -10,6 +11,10 @@ module;
 #include <vector>
 
 export module ParaCompiler:Types;
+
+namespace ParaCompiler::Symbols {
+struct Symbol;
+}
 
 export namespace ParaCompiler::Types {
 
@@ -70,10 +75,10 @@ struct StructType : Type {
 };
 
 struct FuncType : Type {
-    std::vector<std::pair<std::string, const Type *>> args;
+    std::vector<std::pair<Symbols::Symbol *, const Type *>> args;
     const Type *res_type = nullptr;
 
-    FuncType(std::vector<std::pair<std::string, const Type *>> args_,
+    FuncType(std::vector<std::pair<Symbols::Symbol *, const Type *>> args_,
              const Type *res_type_)
         : args(std::move(args_)), res_type(res_type_) {}
 
@@ -88,11 +93,25 @@ struct FuncType : Type {
     virtual size_t get_width() const override {
         throw std::runtime_error("unable to get width of struct type!");
     }
+
+    bool is_similar(const FuncType &other) const {
+        if (res_type != other.res_type) return false;
+        if (args.size() != other.args.size()) return false;
+        for (int i = 0; i < args.size(); i++)
+            if (args[i].second != other.args[i].second) return false;
+        return true;
+    }
 };
 
 struct TypeManager {
     std::vector<std::unique_ptr<Type>> types;
     std::unordered_map<size_t, IntType *> ints;
+    // map so no need for hash
+    std::map<
+        std::pair<std::vector<std::pair<Symbols::Symbol *, const Type *>>, const Type *>,
+        FuncType *>
+        funcs;
+
     BoolType *boolt = nullptr;
     FlexibleType *flext = nullptr;
 
@@ -143,8 +162,12 @@ struct TypeManager {
         return structp;
     }
 
-    const FuncType *get_func_type(std::vector<std::pair<std::string, const Type *>> args,
-                                  const Type *res_type) {
+    const FuncType *get_func_type(
+        std::vector<std::pair<Symbols::Symbol *, const Type *>> args,
+        const Type *res_type) {
+        if (auto it = funcs.find(std::make_pair(args, res_type)); it != funcs.end())
+            return it->second;
+
         auto funct = std::make_unique<FuncType>(std::move(args), res_type);
         auto funcp = funct.get();
         types.push_back(std::move(funct));

@@ -1,9 +1,9 @@
 module;
 
-#include <llvm/IR/DerivedTypes.h>
 #include <llvm/ADT/APInt.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstrTypes.h>
@@ -17,9 +17,11 @@ module;
 
 #include <cassert>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 export module ParaCompiler:LLVMEmitter;
 
@@ -38,12 +40,14 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     Types::TypeManager &type_manager;
 
     std::unordered_map<const Types::Type *, llvm::Type *> type_to_llvm;
+    std::unordered_map<const Types::FuncType *, llvm::FunctionType *> func_to_llvm;
 
     llvm::LLVMContext ctx;
     llvm::IRBuilder<> builder;
     llvm::Module module;
-    llvm::Function *func;
     llvm::Value *last_value = nullptr;
+
+    llvm::Function *func() { return builder.GetInsertBlock()->getParent(); }
 
     void print() { module.print(llvm::outs(), nullptr); }
 
@@ -63,6 +67,16 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         return tmp_builder.CreateAlloca(type, nullptr, name);
     }
 
+    llvm::FunctionType *get_llvm_func(const Types::FuncType *ftype) {
+        auto it = func_to_llvm.find(ftype);
+        if (it != func_to_llvm.end()) return it->second;
+
+        std::vector<llvm::Type *> args;
+        for (auto &t : ftype->args) args.push_back(get_llvm_type(t.second));
+        auto rest = get_llvm_type(ftype->res_type);
+        return llvm::FunctionType::get(rest, args, false);
+    }
+
     llvm::Type *get_llvm_type(const Types::Type *type) {
         auto it = type_to_llvm.find(type);
         if (it != type_to_llvm.end()) return it->second;
@@ -72,6 +86,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
             std::vector<llvm::Type *> fields;
             for (auto &t : stype->fields) fields.push_back(get_llvm_type(t));
             res = llvm::StructType::create(ctx, fields);
+        } else if (auto ftype = dynamic_cast<const Types::FuncType *>(type)) {
+            res = builder.getPtrTy();
         } else {
             try {
                 auto width = type->get_width();
@@ -86,11 +102,7 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     }
 
     LLVMEmitterVisitor(Types::TypeManager &type_manager_)
-        : type_manager(type_manager_),
-          ctx(),
-          builder(ctx),
-          module("top", ctx),
-          func(nullptr) {
+        : type_manager(type_manager_), ctx(), builder(ctx), module("top", ctx) {
         llvm::FunctionType *outft = llvm::FunctionType::get(
             llvm::Type::getVoidTy(ctx),
             {llvm::PointerType::getUnqual(ctx), llvm::Type::getInt32Ty(ctx)}, false);
@@ -103,7 +115,7 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         llvm::Function::Create(inft, llvm::Function::ExternalLinkage, "pcl_input_int__",
                                module);
 
-        func = llvm::Function::Create(
+        auto func = llvm::Function::Create(
             llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), {}),
             llvm::Function::ExternalLinkage, "main", module);
 
@@ -269,6 +281,10 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
             last_value = builder.CreateICmpNE(
                 expr, llvm::ConstantInt::get(expr->getType(), 0), "to_bool");
             return;
+        } else if (dynamic_cast<const Types::FuncType *>(node.type)) {
+            // nothing is needed to emit, all is ptr
+            last_value = expr;
+            return;
         }
 
         // to int
@@ -360,6 +376,21 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         last_value = temp;
     }
 
+    void visit(AST::Call &node) override {
+        node.func->accept(*this);
+        auto fptr = get_last_value();
+        auto ft = dynamic_cast<const Types::FuncType *>(node.func->type);
+        if (!ft) throw std::runtime_error("can't call not function types");
+        auto lft = get_llvm_func(ft);
+
+        std::vector<llvm::Value *> args;
+        for (auto &i : node.args) {
+            i->accept(*this);
+            args.push_back(get_last_value());
+        }
+        last_value = builder.CreateCall(lft, fptr, args);
+    }
+
     void visit(AST::DotExpr &node) override {
         node.left->accept(*this);
         last_value = builder.CreateStructGEP(get_llvm_type(node.left->type),
@@ -369,6 +400,37 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         node.left->accept(*this);
         last_value = builder.CreateStructGEP(get_llvm_type(node.left->type),
                                              get_last_value(), node.ind);
+    }
+
+    void visit(AST::RetStmt &node) override {
+        node.expr->accept(*this);
+        builder.CreateRet(get_last_value());
+    }
+
+    void visit(AST::FuncBody &node) override {
+        auto ftype = dynamic_cast<const Types::FuncType *>(node.type);
+        auto lft = get_llvm_func(ftype);
+        llvm::Function *f = llvm::Function::Create(lft, llvm::Function::ExternalLinkage,
+                                                   "user.func.", module);
+        auto prevBB = builder.GetInsertBlock();
+        auto entryBB = llvm::BasicBlock::Create(ctx, "entry", f);
+        builder.SetInsertPoint(entryBB);
+
+        int ind = 0;
+        for (auto &larg : f->args()) {
+            auto &sym = ftype->args[ind].first;
+            llvm::Value *alloca = nullptr;
+            if (!symbols.contains(sym))
+                alloca = create_alloca(sym, sym->name);
+            else
+                alloca = symbols[sym];
+            builder.CreateStore(&larg, alloca);
+            ind++;
+        }
+        node.body->accept(*this);
+
+        builder.SetInsertPoint(prevBB);
+        last_value = f;
     }
 };
 

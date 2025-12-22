@@ -27,11 +27,11 @@ struct TypeChecker : Visitor::DefaultVisitor {
         if (spec->is_int)
             return manager.get_intt(spec->int_width);
         else if (spec->is_func) {
-            std::vector<std::pair<std::string, const Type *>> argts;
+            std::vector<std::pair<Symbols::Symbol *, const Type *>> argts;
             for (auto &i : spec->args) {
                 auto argt = get_from_typespec(i.second.get());
                 i.first->type = i.first->sym->type = argt;
-                argts.emplace_back(i.first->val, argt);
+                argts.emplace_back(i.first->sym, argt);
             }
             return manager.get_func_type(argts, get_from_typespec(spec->ret_spec.get()));
         } else
@@ -114,6 +114,16 @@ struct TypeChecker : Visitor::DefaultVisitor {
         id->accept(*this);
 
         // both val and sym.type are present
+        if (auto ft = dynamic_cast<const FuncType *>(node.left->type)) {
+            if (dynamic_cast<const FuncType *>(node.val->type))
+                node.val = make_conversion_node_or_propagate(std::move(node.val), ft);
+            else
+                throw std::runtime_error("an attempt to assign non-func to func! " +
+                                         Types::Type::ptr_to_str(node.val->type) +
+                                         " is assigned to " +
+                                         Types::Type::ptr_to_str(node.left->type));
+        }
+
         auto comt = manager.get_common_type(id->sym->type, node.val->type);
         if (comt != id->sym->type)
             throw std::runtime_error(
@@ -126,6 +136,9 @@ struct TypeChecker : Visitor::DefaultVisitor {
 
     virtual void visit(AST::Call &node) override {
         node.func->accept(*this);
+        // lval->rval conv
+        auto leftt = node.func->type;
+        node.func = make_conversion_node_or_propagate(std::move(node.func), leftt);
         auto ft = dynamic_cast<const FuncType *>(node.func->type);
         if (!ft)
             throw std::runtime_error("can only call functions but got " +

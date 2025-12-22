@@ -9,7 +9,7 @@ export module ParaCompiler:AST;
 import :Visitor;
 import :Types;
 
-export namespace ParaCompiler::Symbols {
+namespace ParaCompiler::Symbols {
 struct Symbol;
 }
 
