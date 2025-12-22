@@ -79,9 +79,9 @@ class TreeBuilder : public ParaCLBaseVisitor {
 
         if (ctx->assignment()) return visit(ctx->assignment());
 
-        if (ctx->returnStatement()) {
+        if (auto *r = ctx->returnStatement()) {
             auto *node = new AST::RetStmt();
-            node->expr = take<AST::Expr>(visit(ctx->expr()));
+            node->expr = take<AST::Expr>(visit(r->expr()));
             return static_cast<AST::Node *>(node);
         }
 
@@ -208,6 +208,7 @@ class TreeBuilder : public ParaCLBaseVisitor {
     Any visitUnaryExpr(ParaCLParser::UnaryExprContext *ctx) override {
         auto *node = new AST::UnaryExpr();
         node->op = ctx->children[0]->getText().at(0);
+        node->expr = take<AST::Expr>(visit(ctx->expr()));
         return static_cast<AST::Node *>(node);
     }
 

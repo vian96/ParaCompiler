@@ -278,6 +278,13 @@ struct TypeChecker : Visitor::DefaultVisitor {
         node.type = ltype->fields[it->second];
     }
 
+    void visit(AST::RetStmt &node) override {
+        node.expr->accept(*this);
+        if (node.expr->type == manager.get_flexiblet())
+            node.expr = make_conversion_node_or_propagate(std::move(node.expr),
+                                                          manager.get_intt());
+    }
+
     void visit(AST::IndexExpr &node) override {
         node.left->accept(*this);
         auto ltype = dynamic_cast<const StructType *>(node.left->type);
