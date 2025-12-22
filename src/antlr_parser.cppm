@@ -51,7 +51,6 @@ class TreeBuilder : public ParaCLBaseVisitor {
             std::cerr << "Syntax errors found. Aborting.\n";
             return nullptr;
         }
-        std::cerr << tree->toStringTree(&parser) << std::endl;
 
         ParaCompiler::TreeBuilder builder;
         return builder.build(tree);
