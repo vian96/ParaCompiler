@@ -178,8 +178,11 @@ class TreeBuilder : public ParaCLBaseVisitor {
             node->is_int = false;
             node->is_func = true;
             for (int i = 0; i < ctx->ID().size(); i++)
-                node->args.emplace_back(std::string(ctx->ID(i)->getText()),
-                                        take<AST::TypeSpec>(ctx->typeSpec(i)));
+                node->args.emplace_back(
+                    std::make_unique<AST::Id>(std::string(ctx->ID(i)->getText())),
+                    take<AST::TypeSpec>(ctx->typeSpec(i)));
+            node->ret_spec =
+                take<AST::TypeSpec>(ctx->typeSpec(ctx->typeSpec().size() - 1));
         }
         return static_cast<AST::Node *>(node);
     }
@@ -253,7 +256,7 @@ class TreeBuilder : public ParaCLBaseVisitor {
             throw std::runtime_error(std::to_string(ind) +
                                      " is too big number of function arg");
         auto *node = new AST::Id();
-        node->val = func_spec->args[ind].first;
+        node->val = func_spec->args[ind].first->val;
         return static_cast<AST::Node *>(node);
     }
 

@@ -116,6 +116,9 @@ class DumpVisitor : public Visitor {
     void visit(AST::TypeSpec &node) override {
         print_indent();
         std::cerr << "TypeSpec [" << node.name << "]\n";
+        indent_level++;
+        for (auto &i : node.args) i.first->accept(*this);
+        indent_level--;
     }
 
     virtual void visit(AST::Block &node) override {

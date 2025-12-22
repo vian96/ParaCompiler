@@ -23,17 +23,6 @@ struct Node {
 #define PARACOMPILER_AST_OVERRIDE_ACCEPT \
     void accept(Visitor::Visitor &v) override { v.visit(*this); }
 
-struct TypeSpec : Node {
-    std::string name;
-    bool is_int = true;
-    size_t int_width = 32;
-
-    bool is_func = false;
-    std::vector<std::pair<std::string, std::unique_ptr<TypeSpec>>> args;
-
-    PARACOMPILER_AST_OVERRIDE_ACCEPT
-};
-
 struct Statement : Node {};
 
 struct Program : Node {
@@ -52,6 +41,29 @@ struct Expr : Node {
 
 struct Block : Node {
     std::vector<std::unique_ptr<Statement>> statements;
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct Id : Expr {
+    bool is_lvalue() const override { return true; }
+    std::string val;
+    Symbols::Symbol *sym = nullptr;
+
+    Id(std::string name) : val(std::move(name)) {}
+    Id() {}
+
+    PARACOMPILER_AST_OVERRIDE_ACCEPT
+};
+
+struct TypeSpec : Node {
+    std::string name;
+    bool is_int = true;
+    size_t int_width = 32;
+
+    bool is_func = false;
+    std::vector<std::pair<std::unique_ptr<Id>, std::unique_ptr<TypeSpec>>> args;
+    std::unique_ptr<TypeSpec> ret_spec = nullptr;
+
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 
@@ -97,13 +109,6 @@ struct BinExpr : Expr {
 struct IntLit : Expr {
     // TODO: compile time constants are max parsed 64 bits
     int64_t val;
-    PARACOMPILER_AST_OVERRIDE_ACCEPT
-};
-
-struct Id : Expr {
-    bool is_lvalue() const override { return true; }
-    std::string val;
-    Symbols::Symbol *sym;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 

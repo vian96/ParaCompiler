@@ -51,7 +51,10 @@ class DefaultVisitor : public Visitor {
     void visit(AST::Node &) override {}
     void visit(AST::Expr &) override {}
     void visit(AST::Statement &) override {}
-    void visit(AST::TypeSpec &) override {}
+
+    void visit(AST::TypeSpec &node) override {
+        for (auto &i : node.args) i.first->accept(*this);
+    }
 
     void visit(AST::IntLit &) override {}
     void visit(AST::Id &) override {}

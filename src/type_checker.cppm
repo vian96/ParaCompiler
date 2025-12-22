@@ -23,6 +23,22 @@ struct TypeChecker : Visitor::DefaultVisitor {
 
     TypeChecker(TypeManager &manager_) : manager(manager_) {}
 
+    const Types::Type *get_from_typespec(AST::TypeSpec *spec) {
+        if (spec->is_int)
+            return manager.get_intt(spec->int_width);
+        else if (spec->is_func) {
+            std::vector<std::pair<std::string, const Type *>> argts;
+            for (auto &i : spec->args) {
+                auto argt = get_from_typespec(i.second.get());
+                i.first->sym->type = argt;
+                argts.emplace_back(i.first->val, argt);
+            }
+            return manager.get_func_type(argts, get_from_typespec(spec->ret_spec.get()));
+        } else
+            throw std::runtime_error("not implemented not-int type-spec like this one: " +
+                                     spec->name);
+    }
+
     std::unique_ptr<AST::Expr> make_conversion_node_or_propagate(
         std::unique_ptr<AST::Expr> expr, const Type *t) {
         if (expr->is_lvalue()) {
@@ -70,16 +86,12 @@ struct TypeChecker : Visitor::DefaultVisitor {
             throw std::runtime_error(
                 "unexpected: no val and typespec for assignment node");
 
+        if (node.typeSpec)
+            node.left->type = id->type = id->sym->type =
+                get_from_typespec(node.typeSpec.get());
+
         if (node.val) node.val->accept(*this);
 
-        if (node.typeSpec) {
-            if (node.typeSpec->is_int)
-                id->type = id->sym->type = manager.get_intt(node.typeSpec->int_width);
-            else
-                throw std::runtime_error(
-                    "not implemented not-int type-spec like this one: " +
-                    node.typeSpec->name);
-        }
         if (!id->sym->type && node.val) {
             if (node.val->type != manager.get_flexiblet()) {
                 id->type = id->sym->type = node.val->type;

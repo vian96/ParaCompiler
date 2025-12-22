@@ -44,7 +44,7 @@ expr
 input: 'input' '(' INT ')';
 typeSpec: ':' (
     'int' ('(' INT ')')? 
-    | '(' ID typeSpec (',' ID typeSpec)* ')'
+    | '(' ID typeSpec (',' ID typeSpec)* ')' typeSpec
 );
 
 INT: [0-9]+;

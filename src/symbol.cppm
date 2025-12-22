@@ -66,7 +66,7 @@ struct NameResolution : public Visitor::DefaultVisitor {
             // we clear prev scopes as function should not access external vars
             std::swap(prev_scopes, scopes);
             scopes.emplace_back();
-            for (auto &i : node.typeSpec->args) add_or_get_symbol(i.first);
+            for (auto &i : node.typeSpec->args) i.first->accept(*this);
         }
         if (node.val) node.val->accept(*this);
         if (node.typeSpec && node.typeSpec->is_func) {
