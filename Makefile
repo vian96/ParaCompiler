@@ -1,4 +1,4 @@
-.PHONY: all config build test clean run test test_run
+.PHONY: all config build clean clean-gen run test test-gen test-all rebuild
 
 all: build
 
@@ -9,17 +9,22 @@ build:
 	cmake --build --preset dev
 
 test:
-	ctest --preset dev
+	cmake --build --preset dev --target check-lit
+
+test-gen:
+	cmake --build --preset dev --target check-gen
+
+test-all:
+	cmake --build --preset dev --target check-all
 
 clean:
 	rm -rf build src/generated
+	find . -name "__pycache__" -type d -exec rm -rf {} +
+
+clean-gen:
+	rm -rf tests/gen
 
 run: build
 	./build/src/paracl $(ARGS) | lli -load=./build/src/libparastdlib.so
-
-test_run:
-	./build/src/paracl ./test.pcl --dump-ast
-
-test: test_run
 
 rebuild: clean config build
