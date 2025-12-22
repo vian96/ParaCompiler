@@ -17,12 +17,14 @@ struct ExprStmt;
 struct Block;
 struct ForStmt;
 struct WhileStmt;
+struct RetStmt;
 struct IfStmt;
 struct Conversion;
 struct Glue;
 struct DotExpr;
 struct LValToRVal;
 struct IndexExpr;
+struct FuncBody;
 }  // namespace ParaCompiler::AST
 
 export namespace ParaCompiler::Visitor {
@@ -55,6 +57,8 @@ struct Visitor {
     virtual void visit(AST::ForStmt &) = 0;
     virtual void visit(AST::WhileStmt &) = 0;
     virtual void visit(AST::IfStmt &) = 0;
+    virtual void visit(AST::FuncBody &) = 0;
+    virtual void visit(AST::RetStmt &) = 0;
 };
 
 }  // namespace ParaCompiler::Visitor

@@ -75,6 +75,8 @@ class DefaultVisitor : public Visitor {
         node.trueb->accept(*this);
         if (node.falseb) node.falseb->accept(*this);
     }
+    virtual void visit(AST::FuncBody &node) override { node.body->accept(*this); }
+    virtual void visit(AST::RetStmt &node) override { node.expr->accept(*this); }
 };
 
 }  // namespace ParaCompiler::Visitor

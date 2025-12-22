@@ -77,8 +77,8 @@ class DumpVisitor : public Visitor {
     // --- Expressions & Leaves ---
     void visit(AST::BinExpr &node) override {
         print_indent();
-        std::cerr << "BinExpr type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.op
-                  << "]\n";
+        std::cerr << "BinExpr type: [" << Types::Type::ptr_to_str(node.type) << "] ["
+                  << node.op << "]\n";
 
         indent_level++;
         node.left->accept(*this);
@@ -88,8 +88,8 @@ class DumpVisitor : public Visitor {
 
     void visit(AST::UnaryExpr &node) override {
         print_indent();
-        std::cerr << "UnaryExpr type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.op
-                  << "]\n";
+        std::cerr << "UnaryExpr type: [" << Types::Type::ptr_to_str(node.type) << "] ["
+                  << node.op << "]\n";
 
         indent_level++;
         node.expr->accept(*this);
@@ -98,13 +98,14 @@ class DumpVisitor : public Visitor {
 
     void visit(AST::IntLit &node) override {
         print_indent();
-        std::cerr << "IntLit type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.val
-                  << "]\n";
+        std::cerr << "IntLit type: [" << Types::Type::ptr_to_str(node.type) << "] ["
+                  << node.val << "]\n";
     }
 
     void visit(AST::Id &node) override {
         print_indent();
-        std::cerr << "Id type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.val << "]\n";
+        std::cerr << "Id type: [" << Types::Type::ptr_to_str(node.type) << "] ["
+                  << node.val << "]\n";
     }
 
     void visit(AST::Input &node) override {
@@ -209,6 +210,20 @@ class DumpVisitor : public Visitor {
         std::cerr << "IndexExpr: Ind: " << node.ind << '\n';
         indent_level++;
         node.left->accept(*this);
+        indent_level--;
+    }
+    virtual void visit(AST::FuncBody &node) override {
+        print_indent();
+        std::cerr << "FuncBody\n";
+        indent_level++;
+        node.body->accept(*this);
+        indent_level--;
+    }
+    virtual void visit(AST::RetStmt &node) override {
+        print_indent();
+        std::cerr << "RetStmt\n";
+        indent_level++;
+        node.expr->accept(*this);
         indent_level--;
     }
 };

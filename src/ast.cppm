@@ -16,12 +16,12 @@ struct Symbol;
 export namespace ParaCompiler::AST {
 
 struct Node {
-    virtual void accept(Visitor::Visitor& visitor) = 0;
+    virtual void accept(Visitor::Visitor &visitor) = 0;
     virtual ~Node() = default;
 };
 
 #define PARACOMPILER_AST_OVERRIDE_ACCEPT \
-    void accept(Visitor::Visitor& v) override { v.visit(*this); }
+    void accept(Visitor::Visitor &v) override { v.visit(*this); }
 
 struct TypeSpec : Node {
     std::string name;
@@ -43,7 +43,7 @@ struct Program : Node {
 
 struct Expr : Node {
     virtual bool is_lvalue() const { return false; }
-    const Types::Type* type = nullptr;
+    const Types::Type *type = nullptr;
 
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -103,7 +103,7 @@ struct IntLit : Expr {
 struct Id : Expr {
     bool is_lvalue() const override { return true; }
     std::string val;
-    Symbols::Symbol* sym;
+    Symbols::Symbol *sym;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
 
@@ -131,7 +131,7 @@ struct ForStmt : Statement {
     std::unique_ptr<Id> container;
     std::vector<std::unique_ptr<Expr>> slice;
     std::unique_ptr<Block> body;
-    Symbols::Symbol* i_sym;
+    Symbols::Symbol *i_sym;
 
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -139,7 +139,7 @@ struct ForStmt : Statement {
 struct Conversion : Expr {
     std::unique_ptr<Expr> expr;
 
-    Conversion(std::unique_ptr<Expr> expr_, const Types::Type* res_type_)
+    Conversion(std::unique_ptr<Expr> expr_, const Types::Type *res_type_)
         : expr(std::move(expr_)) {
         type = res_type_;
     }
