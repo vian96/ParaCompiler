@@ -34,7 +34,7 @@ class DumpVisitor : public Visitor {
     // --- Statements ---
     void visit(AST::Assignment &node) override {
         print_indent();
-        std::cout << "Assignment type: [" << Types::Type::ptr_to_str(node.left->type)
+        std::cerr << "Assignment type: [" << Types::Type::ptr_to_str(node.left->type)
                   << "] [Name: " << node.name << "]\n";
 
         indent_level++;
@@ -55,7 +55,7 @@ class DumpVisitor : public Visitor {
 
     void visit(AST::Conversion &node) override {
         print_indent();
-        std::cout << "Conversion to [" << Types::Type::ptr_to_str(node.type) << "]\n";
+        std::cerr << "Conversion to [" << Types::Type::ptr_to_str(node.type) << "]\n";
 
         indent_level++;
         if (node.expr) node.expr->accept(*this);
@@ -74,7 +74,7 @@ class DumpVisitor : public Visitor {
     // --- Expressions & Leaves ---
     void visit(AST::BinExpr &node) override {
         print_indent();
-        std::cout << "BinExpr type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.op
+        std::cerr << "BinExpr type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.op
                   << "]\n";
 
         indent_level++;
@@ -85,7 +85,7 @@ class DumpVisitor : public Visitor {
 
     void visit(AST::UnaryExpr &node) override {
         print_indent();
-        std::cout << "UnaryExpr type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.op
+        std::cerr << "UnaryExpr type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.op
                   << "]\n";
 
         indent_level++;
@@ -95,18 +95,18 @@ class DumpVisitor : public Visitor {
 
     void visit(AST::IntLit &node) override {
         print_indent();
-        std::cout << "IntLit type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.val
+        std::cerr << "IntLit type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.val
                   << "]\n";
     }
 
     void visit(AST::Id &node) override {
         print_indent();
-        std::cout << "Id type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.val << "]\n";
+        std::cerr << "Id type: [" << Types::Type::ptr_to_str(node.type) << "] [" << node.val << "]\n";
     }
 
     void visit(AST::Input &node) override {
         print_indent();
-        std::cout << "InputExpr type: [" << Types::Type::ptr_to_str(node.type) << "]\n";
+        std::cerr << "InputExpr type: [" << Types::Type::ptr_to_str(node.type) << "]\n";
     }
 
     void visit(AST::TypeSpec &node) override {
@@ -180,30 +180,30 @@ class DumpVisitor : public Visitor {
 
     void visit(AST::Glue &node) override {
         print_indent();
-        std::cout << "Glue:";
-        if (node.type) std::cout << " [" << std::string(*node.type) << "]";
-        std::cout << '\n';
+        std::cerr << "Glue:";
+        if (node.type) std::cerr << " [" << std::string(*node.type) << "]";
+        std::cerr << '\n';
         indent_level++;
         for (auto &val : node.vals) val.val->accept(*this);
         indent_level--;
     }
     void visit(AST::DotExpr &node) override {
         print_indent();
-        std::cout << "DotExpr: Id: " << node.id << ", Ind: " << node.field_ind << '\n';
+        std::cerr << "DotExpr: Id: " << node.id << ", Ind: " << node.field_ind << '\n';
         indent_level++;
         node.left->accept(*this);
         indent_level--;
     }
     void visit(AST::LValToRVal &node) override {
         print_indent();
-        std::cout << "LValToRVal\n";
+        std::cerr << "LValToRVal\n";
         indent_level++;
         node.expr->accept(*this);
         indent_level--;
     }
     void visit(AST::IndexExpr &node) override {
         print_indent();
-        std::cout << "IndexExpr: Ind: " << node.ind << '\n';
+        std::cerr << "IndexExpr: Ind: " << node.ind << '\n';
         indent_level++;
         node.left->accept(*this);
         indent_level--;
