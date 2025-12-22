@@ -128,11 +128,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     }
 
     void visit(AST::Assignment &node) override {
-        llvm::AllocaInst *alloca = nullptr;
-        if (!symbols.contains(node.sym))
-            alloca = create_alloca(node.sym, node.name);
-        else
-            alloca = symbols[node.sym];
+        node.left->accept(*this);
+        auto alloca = get_last_value();
 
         if (node.val) {
             node.val->accept(*this);
@@ -179,7 +176,15 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         }
     }
 
-    void visit(AST::Id &node) override { last_value = symbols.at(node.sym); }
+    void visit(AST::Id &node) override {
+        llvm::Value *alloca = nullptr;
+        if (!symbols.contains(node.sym))
+            alloca = create_alloca(node.sym, node.val);
+        else
+            alloca = symbols[node.sym];
+
+        last_value = alloca;
+    }
 
     void visit(AST::LValToRVal &node) override {
         node.expr->accept(*this);

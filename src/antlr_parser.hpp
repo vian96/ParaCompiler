@@ -64,9 +64,17 @@ class TreeBuilder : public ParaCLBaseVisitor {
 
     Any visitAssignment(ParaCLParser::AssignmentContext* ctx) override {
         auto* node = new AST::Assignment();
-        node->name = ctx->ID()->getText();
+        node->left = take<AST::Expr>(visit(ctx->expr(0)));
+        if (auto id = dynamic_cast<AST::Id*>(node->left.get()))
+            node->name = id->val;
+        else if (ctx->typeSpec())
+            throw std::runtime_error("can only specify type on vardecl");
+        if (!node->left->is_lvalue()) throw std::runtime_error("can't assign to rvalue");
+
         if (ctx->typeSpec()) node->typeSpec = take<AST::TypeSpec>(visit(ctx->typeSpec()));
-        if (ctx->expr()) node->val = take<AST::Expr>(visit(ctx->expr()));
+
+        if (ctx->expr().size() > 1) node->val = take<AST::Expr>(visit(ctx->expr(1)));
+
         return static_cast<AST::Node*>(node);
     }
 

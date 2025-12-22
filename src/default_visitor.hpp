@@ -13,6 +13,7 @@ class DefaultVisitor : public Visitor {
     }
 
     void visit(AST::Assignment &node) override {
+        node.left->accept(*this);
         if (node.typeSpec) node.val->accept(*this);
         if (node.val) node.val->accept(*this);
     }

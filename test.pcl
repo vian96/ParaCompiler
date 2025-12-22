@@ -69,6 +69,9 @@ output(0, read_y);
 
 // struct { meta: { x: int(8), y: int(32) }, id: int }
 complex = glue(my_struct:meta, 999:id);
+complex2 = complex;
+complex.meta = complex2.meta;
+complex2.meta.x = complex.meta.x;
 
 deep_val = complex.meta.x; 
 output(0, deep_val); // Exp: 5

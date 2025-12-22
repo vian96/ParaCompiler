@@ -43,16 +43,26 @@ struct TypeChecker : Visitor::DefaultVisitor {
 
     void visit(AST::Print &node) override {
         node.expr->accept(*this);
-        if (node.expr->type == manager.get_flexiblet())
-            node.expr = make_conversion_node_or_propagate(std::move(node.expr),
-                                                          manager.get_intt());
+        auto res_type = (node.expr->type == manager.get_flexiblet() ||
+                         node.expr->type == manager.get_boolt())
+                            ? manager.get_intt()
+                            : node.expr->type;  // for lval->rval conversion
+        node.expr = make_conversion_node_or_propagate(std::move(node.expr), res_type);
     }
 
     void visit(AST::Assignment &node) override {
-        if (node.typeSpec && node.sym->type)
+        auto id = dynamic_cast<AST::Id *>(node.left.get());
+        if (!id) {
+            node.left->accept(*this);
+            node.val->accept(*this);
+            node.val =
+                make_conversion_node_or_propagate(std::move(node.val), node.left->type);
+            return;
+        }
+        if (node.typeSpec && id->sym->type)
             throw std::runtime_error(
                 "an attempt to declare an already declared variable " + node.name +
-                " which was declared with type " + std::string(*node.sym->type));
+                " which was declared with type " + std::string(*id->sym->type));
         if (!node.typeSpec && !node.val)
             throw std::runtime_error(
                 "unexpected: no val and typespec for assignment node");
@@ -61,35 +71,39 @@ struct TypeChecker : Visitor::DefaultVisitor {
 
         if (node.typeSpec) {
             if (node.typeSpec->is_int)
-                node.sym->type = manager.get_intt(node.typeSpec->int_width);
+                id->type = id->sym->type = manager.get_intt(node.typeSpec->int_width);
             else
                 throw std::runtime_error(
                     "not implemented not-int type-spec like this one: " +
                     node.typeSpec->name);
         }
-        if (!node.sym->type && node.val) {
+        if (!id->sym->type && node.val) {
             if (node.val->type != manager.get_flexiblet()) {
-                node.sym->type = node.val->type;
+                id->type = id->sym->type = node.val->type;
                 // lval->rval
-                node.val = make_conversion_node_or_propagate(std::move(node.val),
-                                                             node.sym->type);
+                node.val =
+                    make_conversion_node_or_propagate(std::move(node.val), id->sym->type);
             } else {
-                node.sym->type = manager.get_intt();
-                node.val = make_conversion_node_or_propagate(std::move(node.val),
-                                                             node.sym->type);
+                id->type = id->sym->type = manager.get_intt();
+                node.val =
+                    make_conversion_node_or_propagate(std::move(node.val), id->sym->type);
             }
             return;
         }
 
-        if (node.sym->type && !node.val) return;
+        if (id->sym->type && !node.val) {
+            id->type = id->sym->type;
+            return;
+        }
+        id->accept(*this);
 
         // both val and sym.type are present
-        auto comt = manager.get_common_type(node.sym->type, node.val->type);
-        if (comt != node.sym->type)
+        auto comt = manager.get_common_type(id->sym->type, node.val->type);
+        if (comt != id->sym->type)
             throw std::runtime_error(
                 "Error: conversion does not exist from expr to assignable variable!"
                 "types are: " +
-                std::string(*node.sym->type) +
+                std::string(*id->sym->type) +
                 " for var and: " + std::string(*node.val->type) + " for expr");
         node.val = make_conversion_node_or_propagate(std::move(node.val), comt);
     }

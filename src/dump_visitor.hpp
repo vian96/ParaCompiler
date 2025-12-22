@@ -34,10 +34,11 @@ class DumpVisitor : public Visitor {
     // --- Statements ---
     void visit(AST::Assignment &node) override {
         print_indent();
-        std::cout << "Assignment type: [" << Types::Type::ptr_to_str(node.sym->type)
+        std::cout << "Assignment type: [" << Types::Type::ptr_to_str(node.left->type)
                   << "] [Name: " << node.name << "]\n";
 
         indent_level++;
+        node.left->accept(*this);
         if (node.typeSpec) node.typeSpec->accept(*this);
         if (node.val) node.val->accept(*this);
         indent_level--;

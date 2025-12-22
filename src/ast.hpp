@@ -57,8 +57,8 @@ struct Block : Node {
 struct Assignment : Statement {
     std::string name;
     std::unique_ptr<TypeSpec> typeSpec = nullptr;
+    std::unique_ptr<Expr> left = nullptr;
     std::unique_ptr<Expr> val = nullptr;
-    Symbols::Symbol *sym = nullptr;
 
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };
@@ -147,6 +147,8 @@ struct GlueEntry {
 };
 
 struct Glue : Expr {
+    // because it creates a temporary alloca and uses it
+    bool is_lvalue() const override { return true; }
     std::vector<GlueEntry> vals;
     PARACOMPILER_AST_OVERRIDE_ACCEPT
 };

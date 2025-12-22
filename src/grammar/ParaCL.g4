@@ -16,7 +16,7 @@ ifStatement: 'if' '(' expr ')' block ('else' block)?;
 whileStatement: 'while' '(' expr ')' block;
 forStatement: 'for' '(' ID 'in' expr ':' expr (':' expr)? ')' block;
 
-assignment: ID typeSpec ('=' expr)? | ID '=' expr;
+assignment: expr typeSpec ('=' expr)? | expr '=' expr;
 output: 'output' '(' INT ',' expr ')';
 
 glueEntry: expr (':' ID)?;

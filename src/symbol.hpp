@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -56,7 +57,7 @@ struct NameResolution : public Visitor::DefaultVisitor {
     }
 
     void visit(AST::Assignment& node) override {
-        node.sym = add_or_get_symbol(node.name);
+        node.left->accept(*this);
         if (node.val) node.val->accept(*this);
     }
 
