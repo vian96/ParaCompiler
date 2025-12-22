@@ -51,6 +51,7 @@ class TreeBuilder : public ParaCLBaseVisitor {
             std::cerr << "Syntax errors found. Aborting.\n";
             return nullptr;
         }
+        std::cerr << tree->toStringTree(&parser) << std::endl;
 
         ParaCompiler::TreeBuilder builder;
         return builder.build(tree);
@@ -107,20 +108,26 @@ class TreeBuilder : public ParaCLBaseVisitor {
         if (ctx->typeSpec()) node->typeSpec = take<AST::TypeSpec>(visit(ctx->typeSpec()));
 
         if (ctx->expr().size() > 1) {
-            if (node->typeSpec && node->typeSpec->is_func) {
+            bool is_declaring_func = node->typeSpec && node->typeSpec->is_func;
+            bool old_is_in_func = is_in_func;
+            AST::TypeSpec *old_func_spec = func_spec;
+            if (is_declaring_func) {
                 is_in_func = true;
                 func_spec = node->typeSpec.get();
             }
+
             node->val = take<AST::Expr>(visit(ctx->expr(1)));
-            if (is_in_func) {
+            if (is_declaring_func && !dynamic_cast<AST::FuncBody *>(node->val.get())) {
                 auto func = std::make_unique<AST::FuncBody>();
                 func->body = std::make_unique<AST::Block>();
                 auto ret = std::make_unique<AST::RetStmt>();
                 ret->expr = std::move(node->val);
                 func->body->statements.push_back(std::move(ret));
+                node->val = std::move(func);
             }
-            is_in_func = false;
-            func_spec = nullptr;
+
+            is_in_func = old_is_in_func;
+            func_spec = old_func_spec;
         }
 
         return static_cast<AST::Node *>(node);
@@ -180,9 +187,9 @@ class TreeBuilder : public ParaCLBaseVisitor {
             for (int i = 0; i < ctx->ID().size(); i++)
                 node->args.emplace_back(
                     std::make_unique<AST::Id>(std::string(ctx->ID(i)->getText())),
-                    take<AST::TypeSpec>(ctx->typeSpec(i)));
+                    take<AST::TypeSpec>(visit(ctx->typeSpec(i))));
             node->ret_spec =
-                take<AST::TypeSpec>(ctx->typeSpec(ctx->typeSpec().size() - 1));
+                take<AST::TypeSpec>(visit(ctx->typeSpec(ctx->typeSpec().size() - 1)));
         }
         return static_cast<AST::Node *>(node);
     }
@@ -267,9 +274,11 @@ class TreeBuilder : public ParaCLBaseVisitor {
             if (auto stmt = take<AST::Statement>(visit(stmtCtx)))
                 node->body->statements.push_back(std::move(stmt));
 
+        if (node->body->statements.size() == 0)
+            throw std::runtime_error("expected at least stmt in function body!");
         auto &last = node->body->statements.back();
         auto ret = dynamic_cast<AST::RetStmt *>(last.get());
-        auto exprstmt = dynamic_cast<AST::RetStmt *>(last.get());
+        auto exprstmt = dynamic_cast<AST::ExprStmt *>(last.get());
         if (!ret && !exprstmt)
             throw std::runtime_error(
                 "expected function to end with either ret or exprstmt!");

@@ -30,12 +30,12 @@ struct TypeChecker : Visitor::DefaultVisitor {
             std::vector<std::pair<std::string, const Type *>> argts;
             for (auto &i : spec->args) {
                 auto argt = get_from_typespec(i.second.get());
-                i.first->sym->type = argt;
+                i.first->type = i.first->sym->type = argt;
                 argts.emplace_back(i.first->val, argt);
             }
             return manager.get_func_type(argts, get_from_typespec(spec->ret_spec.get()));
         } else
-            throw std::runtime_error("not implemented not-int type-spec like this one: " +
+            throw std::runtime_error("not implemented type-spec like this one: " +
                                      spec->name);
     }
 
@@ -91,6 +91,7 @@ struct TypeChecker : Visitor::DefaultVisitor {
                 get_from_typespec(node.typeSpec.get());
 
         if (node.val) node.val->accept(*this);
+        if (auto ft = dynamic_cast<const FuncType *>(id->type)) node.val->type = ft;
 
         if (!id->sym->type && node.val) {
             if (node.val->type != manager.get_flexiblet()) {
