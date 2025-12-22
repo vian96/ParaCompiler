@@ -3,6 +3,21 @@ This is the ParaCL compiler. It's a project we built to compile a custom C-like 
 
 We went a bit crazy with modern C++, so under the hood, it uses C++ modules; because of this, the build requirements are pretty strict.
 
+## Implementation status
+**Done:**
+- control flow
+- variable width integers (any width)
+- structs (except explicit type specification, through glue)
+- functions
+
+**In progress:**
+- arrays
+- vectors
+- templates
+- floats
+- repeat
+- methods
+
 ## Getting the Code
 We use the Google `repo` tool to manage dependencies (like the grammar and scripts), because we can (hope you didn't expect a better explanation).
 
@@ -95,4 +110,4 @@ make rebuild
 
 > I don't want to install LLVM 20 on my main PC
 
-Totally fair. Check out the Dockerfile in the root (or in the tools repo). You can build a container that has everything pre-installed.
+Totally fair. Check out the Dockerfile (it's on the way) in the root (or in the tools repo). You can build a container that has everything pre-installed.
