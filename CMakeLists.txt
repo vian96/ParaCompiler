@@ -6,9 +6,11 @@ set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
 
 project(ParaCL LANGUAGES CXX)
 
+list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../external/dist")
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 18.0)
@@ -18,24 +20,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
     add_compile_options(-stdlib=libc++)
     add_link_options(-stdlib=libc++ -lc++abi)
-
-    find_path(STD_MODULE_PATH
-        NAMES std.cppm
-        HINTS
-            "/usr/share/libc++/v1"             # OpenSUSE
-            "/usr/lib/llvm-20/include/c++/v1"  # Ubuntu
-            "/usr/lib64/llvm-20/include/c++/v1"
-            "${LLVM_INCLUDE_DIRS}/c++/v1"
-        DOC "Path to libc++ module sources"
-    )
-
-    if(STD_MODULE_PATH)
-        message(STATUS "Found libc++ module sources in: ${STD_MODULE_PATH}")
-        include_directories(SYSTEM ${STD_MODULE_PATH})
-    else()
-        message(WARNING "Could not find std.cppm! 'import std;' requires libc++ sources.")
-    endif()
-
 else()
     message(WARNING "CHECK: You are not using Clang. C++ Modules support might be unstable.")
 endif()
@@ -52,20 +36,7 @@ if(NOT EXISTS "${ANTLR_JAR_PATH}")
     )
 endif()
 
-get_filename_component(WORKSPACE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
-set(ANTLR4_LOCAL_ROOT "${WORKSPACE_ROOT}/external/antlr4")
-
-if(EXISTS "${ANTLR4_LOCAL_ROOT}/runtime/Cpp/CMakeLists.txt")
-    message(STATUS "CHECK: Found ANTLR4 runtime sources in ${ANTLR4_LOCAL_ROOT}")
-
-    set(ANTLR4_INSTALL OFF CACHE BOOL "" FORCE)
-    set(WITH_DEMO OFF CACHE BOOL "" FORCE)
-    set(ANTLR_BUILD_CPP_TESTS OFF CACHE BOOL "" FORCE)
-
-    add_subdirectory("${ANTLR4_LOCAL_ROOT}/runtime/Cpp" "external/antlr4_runtime")
-else()
-    message(FATAL_ERROR "CRITICAL: ANTLR4 sources not found at ${ANTLR4_LOCAL_ROOT}.\nDid you run 'repo sync' or clone the external dependency?")
-endif()
+find_package(antlr4-runtime REQUIRED)
 
 find_package(LLVM REQUIRED CONFIG)
 if(${LLVM_PACKAGE_VERSION} VERSION_LESS 20.0)
