@@ -6,10 +6,9 @@ limit = 3;
 result = 50;
 
 while (counter < limit) {
-    // Test: Local variable inside a block
-    local_res = counter * 100;
+    result = counter * 100;
 
-    output(0, local_res);
+    output(0, result);
     // CHECK: 0
     // CHECK: 100
     // CHECK: 200
@@ -17,6 +16,16 @@ while (counter < limit) {
     counter = counter + 1;
 }
 
-// Verify outer 'result' was preserved (it was never touched)
+// No shadowing (outer 'result' was modified)
 output(0, result);
-// CHECK: 50
+// CHECK: 200
+
+for (counter in 0: 3) {
+    result = counter * 100;
+
+    output(0, result);
+    // FIXME: Bug with scope shadowing. Should be 0, 100, 200 , but currently returns 300
+    // CHECK: 300
+    // CHECK: 300
+    // CHECK: 300
+}

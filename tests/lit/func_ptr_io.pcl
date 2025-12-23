@@ -4,7 +4,7 @@
 // f3 : (x, y) -> (x + y)^2
 f3 : (x : int, y : int(4)) : int = { v3 = x + y; v3 * v3; };
 
-f5 : (x : int, y : int(4)) : int = (input(0) + input(1)) * (input(0) + input(1));
+f5 : (x : int, y : int(4)) : int = (input(0) * input(1));
 
 // Test function pointer/lambda assignment
 f5 = f3;
