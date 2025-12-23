@@ -63,7 +63,7 @@ if(LLVM_CONFIG_PATH)
     message(STATUS "Found llvm-config: ${LLVM_CONFIG_PATH}")
 
     execute_process(
-        COMMAND ${LLVM_CONFIG_PATH} --link-shared --libs core support irreader target native
+        COMMAND ${LLVM_CONFIG_PATH} --link-static --libs core support irreader target native
         OUTPUT_VARIABLE LLVM_LINK_LIBS
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
@@ -71,12 +71,24 @@ if(LLVM_CONFIG_PATH)
     string(REPLACE "\n" " " LLVM_LINK_LIBS "${LLVM_LINK_LIBS}")
     string(STRIP "${LLVM_LINK_LIBS}" LLVM_LINK_LIBS)
 
-    message(STATUS "LLVM Link Flags: ${LLVM_LINK_LIBS}")
+    execute_process(
+        COMMAND ${LLVM_CONFIG_PATH} --link-static --system-libs
+        OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    string(REPLACE "\n" " " LLVM_SYSTEM_LIBS "${LLVM_SYSTEM_LIBS}")
+
+    message(STATUS "LLVM Link Flags: ${LLVM_LINK_LIBS} ${LLVM_SYSTEM_LIBS}")
 else()
     message(FATAL_ERROR "llvm-config not found! Cannot determine link flags.")
 endif()
 
-target_link_libraries(paracl_core PUBLIC ${LLVM_LINK_LIBS})
+target_link_libraries(paracl_core
+    PUBLIC
+    paracl_parser
+    ${LLVM_LINK_LIBS}
+    ${LLVM_SYSTEM_LIBS}
+)
 
 target_compile_options(paracl_core PRIVATE -frtti)
 

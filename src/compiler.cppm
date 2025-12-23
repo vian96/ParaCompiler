@@ -47,7 +47,9 @@ struct Compiler {
     }
 
     void dump_ast() {
-        assert(ast);
+        if (!ast) {
+            throw std::runtime_error("AST is null");
+        }
         std::cerr << "=== AST Structure ===\n";
         ParaCompiler::Visitor::DumpVisitor dumper;
         ast->accept(dumper);

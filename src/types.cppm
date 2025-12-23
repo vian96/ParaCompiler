@@ -8,6 +8,8 @@ struct Symbol;
 
 import std;
 
+using std::size_t;
+
 export namespace ParaCompiler::Types {
 
 struct Type {

@@ -4,9 +4,17 @@ module;
 #include "ParaCLLexer.h"
 #include "ParaCLParser.h"
 
+#include <iostream>
+#include <memory>
+#include <vector>
+#include <string>
+#include <any>
+#include <stdexcept>
+#include <utility>
+
 export module ParaCompiler:AntlrParser;
 
-import std;
+// import std;
 
 import :AST;
 import :Types;

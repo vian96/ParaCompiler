@@ -7,7 +7,11 @@ import std;
 import :Visitor;
 import :Types;
 
+using std::int64_t;
+
 namespace ParaCompiler::Symbols {
+
+export namespace ParaCompiler::Symbols {
 struct Symbol;
 }
 
