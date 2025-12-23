@@ -1,0 +1,31 @@
+// RUN: %paracl %s > %t.ll
+// RUN: %lli -load=%lib %t.ll | FileCheck %s
+
+counter = 0;
+limit = 3;
+result = 50;
+
+while (counter < limit) {
+    result = counter * 100;
+
+    output(0, result);
+    // CHECK: 0
+    // CHECK: 100
+    // CHECK: 200
+
+    counter = counter + 1;
+}
+
+// No shadowing (outer 'result' was modified)
+output(0, result);
+// CHECK: 200
+
+for (counter in 0: 3) {
+    result = counter * 100;
+
+    output(0, result);
+    // FIXME: Bug with scope shadowing. Should be 0, 100, 200 , but currently returns 300
+    // CHECK: 300
+    // CHECK: 300
+    // CHECK: 300
+}

@@ -1,0 +1,18 @@
+// RUN: %paracl %s > %t.ll
+// RUN: echo "3 7" | %lli -load=%lib %t.ll | FileCheck %s
+
+// f3 : (x, y) -> (x + y)^2
+f3 : (x : int, y : int(4)) : int = { v3 = x + y; v3 * v3; };
+
+f5 : (x : int, y : int(4)) : int = (input(0) * input(1));
+
+// Test function pointer/lambda assignment
+f5 = f3;
+
+// Call calls f3 with inputs.
+// Input 1: 3
+// Input 2: 7
+// Logic: (3 + 7)^2 = 100
+output(0, f5(input(0), input(0)));
+
+// CHECK: 100
