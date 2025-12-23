@@ -24,6 +24,7 @@ add_custom_command(
 
 add_library(paracl_parser STATIC ${ANTLR_OUTPUTS})
 target_include_directories(paracl_parser PUBLIC ${GEN_DIR})
+target_include_directories(paracl_parser SYSTEM PUBLIC "${CMAKE_SOURCE_DIR}/../external/dist/include/antlr4-runtime")
 
 target_link_libraries(paracl_parser PUBLIC antlr4_shared)
 
