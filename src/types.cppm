@@ -7,8 +7,8 @@ struct Symbol;
 }
 
 import std;
+import std.compat;
 
-using std::size_t;
 
 export namespace ParaCompiler::Types {
 
