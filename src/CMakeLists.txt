@@ -24,7 +24,18 @@ add_custom_command(
 
 add_library(paracl_parser STATIC ${ANTLR_OUTPUTS})
 target_include_directories(paracl_parser PUBLIC ${GEN_DIR})
-target_include_directories(paracl_parser SYSTEM PUBLIC "${CMAKE_SOURCE_DIR}/../external/dist/include/antlr4-runtime")
+
+find_path(ANTLR4_INCLUDE_DIR "antlr4-runtime.h"
+    PATH_SUFFIXES "antlr4-runtime"
+    DOC "Path to ANTLR4 runtime headers"
+)
+
+if(ANTLR4_INCLUDE_DIR)
+    message(STATUS "Found ANTLR headers manually: ${ANTLR4_INCLUDE_DIR}")
+    target_include_directories(paracl_parser SYSTEM PUBLIC ${ANTLR4_INCLUDE_DIR})
+else()
+    message(FATAL_ERROR "Could not find antlr4-runtime.h. Check CMAKE_PREFIX_PATH.")
+endif()
 
 target_link_libraries(paracl_parser PUBLIC antlr4_shared)
 
@@ -98,5 +109,5 @@ set_property(TARGET paracl PROPERTY CXX_MODULE_STD ON)
 target_compile_options(paracl PRIVATE -frtti)
 
 add_library(parastdlib SHARED parastdlib.cpp)
-target_link_libraries(parastdlib PRIVATE ${LLVM_LINK_LIBS})
+target_link_libraries(parastdlib PRIVATE ${LLVM_LINK_LIBS} ${LLVM_SYSTEM_LIBS})
 set_target_properties(parastdlib PROPERTIES OUTPUT_NAME "parastdlib")

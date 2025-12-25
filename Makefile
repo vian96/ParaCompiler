@@ -3,8 +3,6 @@
 all: build
 
 config:
-	export CC=../external/dist/bin/clang; \
-	export CXX=../external/dist/bin/clang++; \
 	cmake --preset dev
 
 build:
