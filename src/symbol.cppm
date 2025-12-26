@@ -34,11 +34,16 @@ using Scope = std::unordered_map<Symbol::NameType, Symbol *>;
 struct NameResolution : public Visitor::DefaultVisitor {
     std::vector<Scope> scopes;
     Symbol::ArenaType &symbols;
+    // allows adding new symbols
+    bool inside_declaration_left = false;
 
     Symbol *add_or_get_symbol(std::string_view name) {
         for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
             if (auto sym = it->find(name); sym != it->end()) return sym->second;
 
+        if (!inside_declaration_left)
+            throw std::runtime_error("an attempt to use undeclared var" +
+                                     std::string(name));
         symbols.emplace_back(name);
         scopes.back().emplace(name, &symbols.back());
         return &symbols.back();
@@ -60,7 +65,9 @@ struct NameResolution : public Visitor::DefaultVisitor {
     }
 
     void visit(AST::Assignment &node) override {
+        inside_declaration_left = true;
         node.left->accept(*this);
+
         std::vector<Scope> prev_scopes;
         if (node.typeSpec && node.typeSpec->is_func) {
             // we clear prev scopes as function should not access external vars
@@ -68,6 +75,8 @@ struct NameResolution : public Visitor::DefaultVisitor {
             scopes.emplace_back();
             for (auto &i : node.typeSpec->args) i.first->accept(*this);
         }
+        inside_declaration_left = false;  // allow to set func args syms
+
         if (node.val) node.val->accept(*this);
         if (node.typeSpec && node.typeSpec->is_func) {
             // restore old scopes stack
@@ -77,7 +86,9 @@ struct NameResolution : public Visitor::DefaultVisitor {
 
     void visit(AST::ForStmt &node) override {
         scopes.emplace_back();
+        inside_declaration_left = true;
         node.i_sym = add_or_get_symbol(node.id);
+        inside_declaration_left = false;
         if (node.container) node.container->accept(*this);
         for (auto &slice : node.slice) slice->accept(*this);
         node.body->accept(*this);

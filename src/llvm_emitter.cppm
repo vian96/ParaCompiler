@@ -59,6 +59,15 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         return std::exchange(last_value, nullptr);
     }
 
+    llvm::AllocaInst *get_or_create_alloca(Symbols::Symbol *sym) {
+        llvm::AllocaInst *alloca = nullptr;
+        if (auto it = symbols.find(sym); it == symbols.end())
+            alloca = create_alloca(sym, sym->name);
+        else
+            alloca = symbols[sym];
+        return alloca;
+    }
+
     llvm::AllocaInst *create_entry_block_alloca(llvm::Type *type,
                                                 std::string_view name = "") {
         llvm::Function *func = builder.GetInsertBlock()->getParent();
@@ -194,13 +203,9 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     }
 
     void visit(AST::Id &node) override {
-        llvm::Value *alloca = nullptr;
-        if (!symbols.contains(node.sym))
-            alloca = create_alloca(node.sym, node.val);
-        else
-            alloca = symbols[node.sym];
-
-        last_value = alloca;
+        last_value = get_or_create_alloca(node.sym);
+        if (!node.sym->type)
+            throw std::runtime_error("Node has unset type, most likely, variable was not initialized");
     }
 
     void visit(AST::LValToRVal &node) override {
@@ -229,11 +234,11 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     }
 
     void visit(AST::Print &node) override {
+        node.expr->accept(*this);
         size_t bit_width = node.expr->type->get_width();
         llvm::AllocaInst *buffer =
             create_entry_block_alloca(llvm::Type::getIntNTy(ctx, bit_width));
 
-        node.expr->accept(*this);
         builder.CreateStore(get_last_value(), buffer);
 
         // pcl_output_int__(ptr %buffer, i32 %width)
@@ -327,7 +332,7 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         if (!node.slice.size()) throw std::runtime_error("unimplemented for-each loop");
         if (node.slice.size() != 2) throw std::runtime_error("wrong format of slice");
 
-        llvm::AllocaInst *alloca = create_alloca(node.i_sym, node.id);
+        llvm::AllocaInst *alloca = get_or_create_alloca(node.i_sym);
         node.slice[0]->accept(*this);
         builder.CreateStore(get_last_value(), alloca);
 
@@ -419,11 +424,7 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         int ind = 0;
         for (auto &larg : f->args()) {
             auto &sym = ftype->args[ind].first;
-            llvm::Value *alloca = nullptr;
-            if (!symbols.contains(sym))
-                alloca = create_alloca(sym, sym->name);
-            else
-                alloca = symbols[sym];
+            llvm::Value *alloca = get_or_create_alloca(sym);
             builder.CreateStore(&larg, alloca);
             ind++;
         }

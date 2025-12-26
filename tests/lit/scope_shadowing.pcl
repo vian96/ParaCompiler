@@ -20,12 +20,22 @@ while (counter < limit) {
 output(0, result);
 // CHECK: 200
 
+// for does not introduce new variable but does rewrite the older one
 for (counter in 0: 3) {
     result = counter * 100;
 
     output(0, result);
-    // FIXME: Bug with scope shadowing. Should be 0, 100, 200 , but currently returns 300
-    // CHECK: 300
-    // CHECK: 300
-    // CHECK: 300
+    // CHECK: 0
+    // CHECK: 100
+    // CHECK: 200
+}
+output(0, counter); // CHECK: 3
+
+for (newcnt in 0: 3) {
+    result = newcnt * 100;
+
+    output(0, result);
+    // CHECK: 0
+    // CHECK: 100
+    // CHECK: 200
 }

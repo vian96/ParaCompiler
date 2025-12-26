@@ -105,7 +105,7 @@ class DumpVisitor : public Visitor {
     void visit(AST::Id &node) override {
         print_indent();
         std::cerr << "Id type: [" << Types::Type::ptr_to_str(node.type) << "] ["
-                  << node.val << "]\n";
+                  << node.val << "] sym:[" << node.sym << "]\n";
     }
 
     void visit(AST::Input &node) override {
@@ -146,7 +146,7 @@ class DumpVisitor : public Visitor {
 
     virtual void visit(AST::ForStmt &node) override {
         print_indent();
-        std::cerr << "For [" << node.id << "]\n";
+        std::cerr << "For [" << node.id << "] sym:[" << node.i_sym << "]\n";
 
         indent_level++;
         print_indent();
