@@ -2,13 +2,12 @@ module;
 
 export module ParaCompiler:Types;
 
-namespace ParaCompiler::Symbols {
-struct Symbol;
-}
-
 import std;
 import std.compat;
 
+namespace ParaCompiler::Symbols {
+struct Symbol;
+}
 
 export namespace ParaCompiler::Types {
 
