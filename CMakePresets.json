@@ -2,22 +2,31 @@
   "version": 6,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 28,
+    "minor": 30,
     "patch": 0
   },
   "configurePresets": [
     {
-      "name": "dev",
-      "displayName": "Development (Clang++)",
-      "description": "Ninja generator, Clang++ compiler, Debug mode",
+      "name": "base",
+      "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       },
       "environment": {
         "CLICOLOR_FORCE": "1"
+      }
+    },
+    {
+      "name": "dev",
+      "displayName": "Development (Auto-detect Toolchain)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build",
+      "environment": {
+        "PATH": "${sourceDir}/../external/dist/bin:/opt/paracl-toolchain/bin:$penv{PATH}",
+        "CC": "clang",
+        "CXX": "clang++"
       }
     }
   ],
