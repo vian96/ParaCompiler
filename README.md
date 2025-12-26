@@ -42,7 +42,7 @@ Since C++ Modules support in system compilers is often hit-or-miss (mostly miss)
 
 You can go samurai way with your own LLVM (18.0+), ANTLR (1.13.1) and clang, but we don't recommend that. You must ensure your clang is using `libc++` and that the LLVM libraries you link against were also built with `libc++`. Mixing standard libraries will cause linker errors.
 
-Navigate to the [tools](github.com/nerett/paracompiler-tools) directory and choose your weapon:
+Navigate to the [tools](https://github.com/nerett/paracompiler-tools) directory and choose your weapon:
 
 ### Option 1: I just want to run it (local)
 Download our pre-built LLVM 22 & ANTLR binary set. It puts everything in `external/dist` without touching your system paths.
