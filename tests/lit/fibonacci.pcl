@@ -1,0 +1,35 @@
+// RUN: %paracl %s > %t.ll
+// RUN: echo "10" | %lli -load=%lib %t.ll | FileCheck %s
+
+n = 0;
+a = 0;
+b = 1;
+x : int = input(0);
+
+while (n < x) {
+  n = n + 1;
+
+  if (n == 1)
+    output(0, a);
+
+  if (n == 2)
+    output(0, b);
+
+  if (n > 2) {
+    tmp = b;
+    b = a + b;
+    a = tmp;
+    output(0, b);
+  }
+}
+
+// CHECK: 0
+// CHECK: 1
+// CHECK: 1
+// CHECK: 2
+// CHECK: 3
+// CHECK: 5
+// CHECK: 8
+// CHECK: 13
+// CHECK: 21
+// CHECK: 34

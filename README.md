@@ -20,7 +20,7 @@ We went a bit crazy with modern C++, so under the hood, it uses C++ modules; bec
 - integer literals types are taken from operands that they're used with. e.g. if you add a big number with int(8), this number will be truncated
 - integers can only be extended, not truncated (implicit conversion to bool exists though)
 - && and || are actually bit-wise
-- shadowing variables from outer scopes is not supported because ParaCL grammatic is too ambigious. On the other hand, you cannot access any external variable from function
+- shadowing variables from outer scopes is not supported because ParaCL grammatic is too ambigious. On the other hand, you cannot access any external variable from function (therefore, you cannot write recursive functions)
 - implicit conversion in return statement is not supported
 
 ## Getting the Code
