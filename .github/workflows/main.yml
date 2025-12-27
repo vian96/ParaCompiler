@@ -35,7 +35,7 @@ jobs:
         if ! command -v FileCheck &> /dev/null; then
             echo "FileCheck not found. Installing system LLVM package..."
             sudo zypper --non-interactive refresh
-            sudo zypper --non-interactive install llvm
+            sudo zypper --non-interactive install llvm-devel
         else
             echo "FileCheck found at $(which FileCheck)"
         fi
