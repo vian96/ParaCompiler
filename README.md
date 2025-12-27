@@ -30,41 +30,59 @@ We use the Google `repo` tool to manage dependencies (like the grammar and scrip
 2. Initialize and sync:
 
 ```bash
-mkdir paracl && cd paracl
+mkdir paracl_project && cd paracl_project
 repo init -u https://github.com/nerett/paracompiler-manifest -b main
 repo sync
 ```
 
-## Requirements
-You need a Linux environment. We've tested this on OpenSUSE Leap 15.6 and Ubuntu 22.04.
+This will fetch the compiler source (`paracl`), the infrastructure scripts (`tools`), and external dependencies.
 
-Here is what you absolutely need:
+## Environment Setup
+Since C++ Modules support in system compilers is often hit-or-miss (mostly miss), we strongly recommend using our custom toolchain. It prevents headaches with `libc++` vs `libstdc++` conflicts.
 
-- Clang-18+ (20+ recommended; we need proper modules support)
+You can go samurai way with your own LLVM (18.0+), ANTLR (1.13.1) and clang, but we don't recommend that. You must ensure your clang is using `libc++` and that the LLVM libraries you link against were also built with `libc++`. Mixing standard libraries will cause linker errors.
 
-- LLVM-20/21 (libraries and llvm-config; package is usually named `llvm20-devel`;)
+Navigate to the [tools](https://github.com/nerett/paracompiler-tools) directory and choose your weapon:
 
-- CMake 3.28+ (older versions don't play nice with C++ modules)
-
-- Ninja 1.11+ (1.10 and lower don't support modules)
-
-- Python 3.10+ (for running and generating tests)
-
-- Java (runtime is enough, just for ANTLR jar)
-
-- Ollama (if you want to generate even more tests; `codestral:22b` is used by default)
-
-### Python Dependencies
-For the testing suite:
+### Option 1: I just want to run it (local)
+Download our pre-built LLVM 22 & ANTLR binary set. It puts everything in `external/dist` without touching your system paths.
 
 ```bash
-pip install -r requirements.txt
+cd tools
+make pull-toolchain
 ```
+
+### Option 2: I love containers
+Run an interactive shell inside our CI container where everything is already set up.
+
+```bash
+cd tools
+make pull-img-ci
+make shell-ci
+# you're inside paracl/ now
+```
+
+*For more details on how we build this toolchain, check out the [tools](github.com/nerett/paracompiler-tools).*
+
+## Requirements
+Besides LLVM & ANTLR-runtime toolchain you need a Linux environment with (or use our container image):
+
+- Stable & fast internet connection
+- CMake 4.1.0+ (we use 4.2.0; 3.30+ can also be ok, but you'll need to set magic UUID yourself)
+- Ninja 1.11+
+- Python 3.10+ (for generating and running tests)
+- Python dependencies; run:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+- Java (runtime is enough, just for ANTLR jar)
 
 ## How to Build
 We made a Makefile to wrap the CMake commands so you don't have to type long strings.
 
-To configure (this pulls ANTLR and sets up Ninja):
+To configure (this pulls ANTLR jar and sets up Ninja):
 
 ```bash
 make config
@@ -75,7 +93,7 @@ To build:
 make build
 ```
 
-If you have any problems with dependencies (e.g. default profile expects `clang++` to be at least `clang++-20`), you can create your own cmake preset in `CMakePresets.json` (or run cmake manually).
+If you used **Option 1** above, CMake will automatically detect the custom toolchain in `../external/dist`.
 
 ## Running Tests
 We use LIT (LLVM Integrated Tester).
@@ -87,13 +105,13 @@ make test
 ```
 
 ### Generated tests
-Generate some new tests with
+Generate some new tests with:
 
 ```bash
 python tests/scripts/llm_generator.py
 ```
 
-Run
+Run them:
 
 ```bash
 make test-gen
@@ -101,18 +119,17 @@ make test-gen
 
 ## Troubleshooting
 
-> CMake says it can't find LLVM 20
+> CMake says it can't find LLVM
 
-Make sure llvm-config-20 is in your PATH, or that LLVM_DIR is set correctly. If you are on Ubuntu, the standard repos usually stop at LLVM 15/16. You'll likely need the nightly packages from apt.llvm.org.
+If you are using the custom toolchain (`make pull-toolchain`), ensure you ran `make config` *after* downloading the toolchain.
+If you are using system LLVM, make sure `llvm-config` is in your PATH.
 
-> Modules errors
+> Modules errors / "std module not found"
 
-If you see weird errors about .pcm files, try doing a clean build:
+If you see weird errors about `.pcm` files or missing `std` module:
+1. Try doing a clean build: `make rebuild`.
+2. Ensure you are not mixing system GCC headers with Clang modules. Using the `tools` or `tools-ci` container usually fixes this instantly.
 
-```bash
-make rebuild
-```
+> Linker errors (undefined reference to std::__cxx11...)
 
-> I don't want to install LLVM 20 on my main PC
-
-Totally fair. Check out the `Containerfile` (it has a handy `Makefile`) in the tools repo. You can build a container that has everything pre-installed.
+You are likely linking object files built with `libc++` against libraries built with `libstdc++`. Use the provided toolchain or container to guarantee ABI compatibility.

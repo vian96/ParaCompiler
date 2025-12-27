@@ -1,19 +1,31 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.30)
+
+set(CMAKE_EXPERIMENTAL_CXX_MODULE_CMAKE_API "2182bf5c-ef0d-489a-91da-49dbc3090d2a")
+set(CMAKE_EXPERIMENTAL_CXX_MODULE_DYNDEP 1)
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
+
 project(ParaCL LANGUAGES CXX)
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16.0)
-        message(FATAL_ERROR "CRITICAL: Clang version ${CMAKE_CXX_COMPILER_VERSION} is too old. C++ Modules require Clang 16+ (Recommended: 18+).")
-    else()
-        message(STATUS "CHECK: Clang version ${CMAKE_CXX_COMPILER_VERSION} - OK")
-    endif()
-else()
-    message(WARNING "CHECK: You are not using Clang. C++ Modules support might be unstable.")
-endif()
+list(PREPEND CMAKE_PREFIX_PATH
+    "${CMAKE_CURRENT_SOURCE_DIR}/../external/dist"
+    "/opt/paracl-toolchain"
+)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_EXTENSIONS ON)
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 18.0)
+        message(FATAL_ERROR "CRITICAL: Clang 18+ required.")
+    endif()
+    message(STATUS "CHECK: Clang version ${CMAKE_CXX_COMPILER_VERSION} - OK")
+
+    add_compile_options(-stdlib=libc++)
+    add_link_options(-stdlib=libc++ -lc++abi)
+else()
+    message(WARNING "CHECK: You are not using Clang. C++ Modules support might be unstable.")
+endif()
 
 find_package(Java REQUIRED COMPONENTS Runtime)
 
@@ -27,20 +39,7 @@ if(NOT EXISTS "${ANTLR_JAR_PATH}")
     )
 endif()
 
-get_filename_component(WORKSPACE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
-set(ANTLR4_LOCAL_ROOT "${WORKSPACE_ROOT}/external/antlr4")
-
-if(EXISTS "${ANTLR4_LOCAL_ROOT}/runtime/Cpp/CMakeLists.txt")
-    message(STATUS "CHECK: Found ANTLR4 runtime sources in ${ANTLR4_LOCAL_ROOT}")
-
-    set(ANTLR4_INSTALL OFF CACHE BOOL "" FORCE)
-    set(WITH_DEMO OFF CACHE BOOL "" FORCE)
-    set(ANTLR_BUILD_CPP_TESTS OFF CACHE BOOL "" FORCE)
-
-    add_subdirectory("${ANTLR4_LOCAL_ROOT}/runtime/Cpp" "external/antlr4_runtime")
-else()
-    message(FATAL_ERROR "CRITICAL: ANTLR4 sources not found at ${ANTLR4_LOCAL_ROOT}.\nDid you run 'repo sync' or clone the external dependency?")
-endif()
+find_package(antlr4-runtime REQUIRED)
 
 find_package(LLVM REQUIRED CONFIG)
 if(${LLVM_PACKAGE_VERSION} VERSION_LESS 20.0)

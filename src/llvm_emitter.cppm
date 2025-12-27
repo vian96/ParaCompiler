@@ -15,15 +15,9 @@ module;
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/raw_ostream.h>
 
-#include <cassert>
-#include <stdexcept>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-
 export module ParaCompiler:LLVMEmitter;
+
+import std;
 
 import :AST;
 import :Symbol;
@@ -294,7 +288,9 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
 
         // to int
         auto to_intt = dynamic_cast<const Types::IntType *>(node.type);
-        assert(to_intt);
+        if (!to_intt) {
+            throw std::runtime_error("node.type is not integer");
+        }
         if (node.expr->type == type_manager.get_boolt()) {
             last_value =
                 builder.CreateZExt(expr, llvm::Type::getIntNTy(ctx, to_intt->width));

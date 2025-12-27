@@ -1,14 +1,8 @@
 module;
 
-#include <deque>
-#include <iostream>
-#include <stdexcept>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <vector>
-
 export module ParaCompiler:Symbol;
+
+import std;
 
 import :Types;
 import :DefaultVisitor;

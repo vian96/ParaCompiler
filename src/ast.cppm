@@ -1,13 +1,13 @@
 module;
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
 
 export module ParaCompiler:AST;
 
+import std;
+
 import :Visitor;
 import :Types;
+
+using std::int64_t;
 
 namespace ParaCompiler::Symbols {
 struct Symbol;
