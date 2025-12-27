@@ -30,5 +30,15 @@ jobs:
     - name: Build
       run: make rebuild
 
+    - name: Install FileCheck (Temporary workaround)
+      run: |
+        if ! command -v FileCheck &> /dev/null; then
+            echo "FileCheck not found. Installing system LLVM package..."
+            sudo zypper --non-interactive refresh
+            sudo zypper --non-interactive install llvm
+        else
+            echo "FileCheck found at $(which FileCheck)"
+        fi
+
     - name: Run Tests (LIT)
       run: make test
