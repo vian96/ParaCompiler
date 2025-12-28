@@ -40,7 +40,7 @@ This will fetch the compiler source (`paracl`), the infrastructure scripts (`too
 ## Environment Setup
 Since C++ Modules support in system compilers is often hit-or-miss (mostly miss), we strongly recommend using our custom toolchain. It prevents headaches with `libc++` vs `libstdc++` conflicts.
 
-You can go samurai way with your own LLVM (18.0+), ANTLR (1.13.1) and clang, but we don't recommend that. You must ensure your clang is using `libc++` and that the LLVM libraries you link against were also built with `libc++`. Mixing standard libraries will cause linker errors.
+You can go samurai way with your own LLVM (18.0+), ANTLR (4.13.1) and clang, but we don't recommend that. You must ensure your clang is using `libc++` and that the LLVM libraries you link against were also built with `libc++`. Mixing standard libraries will cause linker errors.
 
 Navigate to the [tools](https://github.com/nerett/paracompiler-tools) directory and choose your weapon:
 
@@ -60,6 +60,14 @@ cd tools
 make pull-img-ci
 make shell-ci
 # you're inside paracl/ now
+```
+
+### Option 3: I am Gentoo enjoyer (build toolchain from source)
+Change `pull-` prefix with `build-` for commands above. Example:
+
+```bash
+cd tools
+make build-toolchain
 ```
 
 *For more details on how we build this toolchain, check out the [tools](github.com/nerett/paracompiler-tools).*
