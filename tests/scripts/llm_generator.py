@@ -23,31 +23,36 @@ PCL_DIR = BASE_GEN_DIR / "pcl"
 CRASH_DIR = BASE_GEN_DIR / "crashes"
 
 PARACL_SPEC = """
-## 1.1 Keywords
-input, output, if, else, for, in, int
+## 1. Core Semantics (C++ Style)
+- **INTEGER ONLY**: The language currently ONLY supports integers. NO floats, NO doubles.
+- **Arithmetic**: `/` is Integer Division (Truncation towards zero). Example: `5 / 2` is `2`.
+- **Booleans**: Comparison operators return `1` (true) or `0` (false).
 
-## 1.2 Types
-v : int = 5;
-v : int(16) = 10;
-By default, int is a 32-bit signed integer.
-Integers use two’s complement and wrap on overflow.
+## 2. Supported Syntax
+// Variable Declaration
+v : int = 10;
+x = (v * 2 + 5) / 3; // Type deduction
 
-## 1.7 Conditionals
-if (v2 == 0) output(0, 1);
-else { output(0, 2); }
+// I/O
+output(0, x); // Prints integer to stdout
+// input(0) is supported but avoid using it for deterministic testing.
 
-## 1.9 Loops
-// Range loop (inclusive start, exclusive end logic usually, but follow C semantics)
-for (i in 0:5) output(0, i);
+// Control Flow
+if (x > 5) { ... } else { ... }
 
-// While loop
-while (n < 10) {
-  n = n + 1;
-  output(0, n);
-}
+while (n > 0) { ... }
 
-## I/O
-output(0, val); // Prints value to stdout with newline
+// Loops (Range ONLY)
+for (i in 0:10) { ... } // i goes from 0 to 9.
+// NOTE: 'for (x in array)' is NOT supported yet.
+
+// Functions
+func : (x: int) : int = { return x * x; };
+res = func(5);
+
+// Structures
+s = glue(a: 10, b: 20);
+val = s.a;
 """
 
 logging.basicConfig(
@@ -99,55 +104,43 @@ def get_random_var_name() -> str:
     return f"{prefix}_{suffix}"
 
 def generate_test_pair(index: int) -> Optional[Dict[str, Any]]:
-    limit = random.randint(5, 20)
+    limit = random.randint(5, 15)
     v1 = get_random_var_name()
 
     scenarios = [
-        f"Calculate Factorial of {random.randint(4, 8)} using a while loop.",
-        f"Calculate sum of numbers from 1 to {limit} using a for loop (range).",
-        f"Fibonacci sequence: print first {random.randint(5, 10)} numbers.",
-        f"Nested loops: Multiplication table for numbers up to 3.",
-        f"Complex arithmetic with precedence: ({v1} * 2 + 5) / 3 - {v1} (initialize {v1} first).",
-        f"If-Else logic: Loop from 0 to 10, print 1 if even, 0 if odd.",
-        f"Sum of squares from 1 to {random.randint(4, 8)}.",
-        f"Collatz conjecture step: if {v1} is even div by 2, else mult by 3 plus 1 (perform a few steps)."
+        f"Arithmetic: Integer division and precedence logic with variables ({v1}).",
+        f"Loop: Sum of even numbers from 0 to {limit} using 'for (i in 0:{limit})'.",
+        f"Logic: While loop calculating a sequence (e.g. n = n - 1) until 0.",
+        f"Function: A simple recursive function (like factorial or sum) called with {random.randint(3,6)}.",
+        f"Structure: Create a struct using glue(), modify a field, and output it.",
+        f"Conditionals: Nested if/else checking values of an integer expression.",
+        f"Complex: A function that takes a struct field and returns an int."
     ]
     task = random.choice(scenarios)
 
     prompt = f"""
-    [INST] You are an Expert Polyglot Programmer and Compiler Tester.
+    [INST] You are an Expert Compiler Tester for a C-like language called **ParaCL**.
 
-    Target Language: **ParaCL**.
+    --- CRITICAL SEMANTICS ---
+    1. **NO FLOATS**: The language ONLY has `int`. DO NOT generate float numbers (e.g., 3.5).
+    2. **INTEGER DIVISION**: `5 / 2` equals `2` (not 2.5).
+    3. **STRICT ORACLE**: You must generate a Python script to verify the output.
+       **IMPORTANT**: Since ParaCL uses integer division, your Python code MUST use `//` for division (e.g., `a // b`) to match the logic.
 
-    --- LANGUAGE SPECIFICATION ---
+    --- IMPLEMENTATION STATUS ---
     {PARACL_SPEC}
 
-    --- ANTLR GRAMMAR (Syntax Reference) ---
-    ```antlr
-    {RAW_GRAMMAR}
-    ```
-
-    --- IMPLEMENTATION STATUS (What works NOW) ---
-    1. **Types**: Only `int` is fully stable. Avoid `double`/`float` for now.
-    2. **Logic**: `if`, `else`, `while`, `for (i in start:end)`.
-    3. **Operators**: `+`, `-`, `*`, `/`, `&&`, `||`, `<`, `>`, `==`.
-    4. **I/O**: `output(0, val)`.
-    5. **Input**: DO NOT USE `input()`. Use hardcoded variable initialization (e.g., `n : int = 10;`).
-
     --- TASK ---
-    Create a logic test for: **"{task}"**
+    Create a test case for: **"{task}"**
 
-    Requirements:
-    1. Write equivalent code in **Python** (Reference) and **ParaCL**.
-    2. **Determinism**: The output MUST be identical.
-    3. **Syntax**:
-       - Python: use `print(val)`.
-       - ParaCL: use `output(0, val);`. Variables MUST have types (`v : int = ...`).
+    Output a JSON object with two fields:
+    1. `python_code`: A valid Python script that calculates the expected result. **Use `//` for division.** Print the final integer result.
+    2. `paracl_code`: The equivalent ParaCL code. Use standard `/` operator. Use `output(0, val)`.
 
-    Return ONLY JSON:
+    Example JSON structure:
     {{
-        "python_code": "...",
-        "paracl_code": "..."
+        "python_code": "a = 10\\nres = (a * 2 + 5) // 3\\nprint(res)",
+        "paracl_code": "a : int = 10;\\nres = (a * 2 + 5) / 3;\\noutput(0, res);"
     }}
     [/INST]
     """
@@ -158,7 +151,7 @@ def generate_test_pair(index: int) -> Optional[Dict[str, Any]]:
             "prompt": prompt,
             "stream": False,
             "format": "json",
-            "options": {"temperature": 1.0}
+            "options": {"temperature": 0.8}
         }).json()
         return json.loads(resp['response'])
     except Exception as e:
