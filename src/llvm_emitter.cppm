@@ -14,6 +14,7 @@ module;
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/TargetParser/Host.h>
 
 export module ParaCompiler:LLVMEmitter;
 
@@ -106,6 +107,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
 
     LLVMEmitterVisitor(Types::TypeManager &type_manager_)
         : type_manager(type_manager_), ctx(), builder(ctx), module("top", ctx) {
+        module.setTargetTriple(llvm::Triple(llvm::sys::getDefaultTargetTriple()));
+
         llvm::FunctionType *outft = llvm::FunctionType::get(
             llvm::Type::getVoidTy(ctx),
             {llvm::PointerType::getUnqual(ctx), llvm::Type::getInt32Ty(ctx)}, false);
