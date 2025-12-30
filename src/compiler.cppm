@@ -1,18 +1,16 @@
 module;
 
-export module ParaCompiler;
+export module ParaCompiler:Compiler;
 
 import std;
 
-export import :AST;
-export import :Visitor;
-export import :Symbol;
-export import :Types;
-export import :AntlrParser;
-export import :TypeChecker;
-export import :LLVMEmitter;
-export import :DefaultVisitor;
-export import :DumpVisitor;
+import :AST;
+import :Visitor;
+import :Symbol;
+import :Types;
+import :AntlrParser;
+import :TypeChecker;
+import :DumpVisitor;
 
 export namespace ParaCompiler {
 
@@ -21,8 +19,7 @@ struct Compiler {
     Symbols::Symbol::ArenaType symbols;
     Types::TypeManager type_manager;
 
-    Compiler() {}
-    Compiler(std::istream &stream) { compile_tu(stream); }
+    Compiler() = default;
 
     bool compile_tu(std::istream &stream) {
         ParaCompiler::TreeBuilder builder;
@@ -32,17 +29,17 @@ struct Compiler {
             return false;
         }
 
-        Symbols::NameResolution name_res(symbols);
-        name_res.visit(*ast);
+        try {
+            Symbols::NameResolution name_res(symbols);
+            name_res.visit(*ast);
 
-        Types::TypeChecker typecheck(type_manager);
-        ast->accept(typecheck);
+            Types::TypeChecker typecheck(type_manager);
+            ast->accept(typecheck);
+        } catch (const std::exception& e) {
+            std::cerr << "Semantic error: " << e.what() << "\n";
+            return false;
+        }
 
-        dump_ast();
-
-        LLVMEmitter::LLVMEmitterVisitor ir_emit(type_manager);
-        ir_emit.visit(*ast);
-        ir_emit.print();
         return true;
     }
 
