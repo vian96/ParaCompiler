@@ -12,19 +12,11 @@ BASE_GEN_DIR = PROJECT_ROOT / "tests/gen"
 PCL_DIR = BASE_GEN_DIR / "pcl"
 CRASH_DIR = BASE_GEN_DIR / "crashes"
 
+LIT_DIR = PROJECT_ROOT / "tests/lit"
+
 GENERATE_LIT_HEADERS = True
 TOTAL_ATTEMPTS = 20
 ORACLE_TIMEOUT = 2.0
-
-TEST_SCENARIOS = [
-    "Arithmetic: Integer division and precedence logic with variables ({var_name}).",
-    "Loop: Sum of even numbers from 0 to {limit} using 'for (i in 0:{limit})'.",
-    "Logic: While loop calculating a sequence (e.g. n = n - 1) until 0.",
-    "Function: A simple recursive function (like factorial or sum) called with {limit}.",
-    "Structure: Create a struct using glue(), modify a field, and output it.",
-    "Conditionals: Nested if/else checking values of an integer expression.",
-    "Complex: A function that takes a struct field and returns an int."
-]
 
 PARACL_SPEC = """
 ## 1. Core Semantics (C++ Style)
@@ -39,7 +31,6 @@ x = (v * 2 + 5) / 3; // Type deduction
 
 // I/O
 output(0, x); // Prints integer to stdout
-// input(0) is supported but avoid using it for deterministic testing.
 
 // Control Flow
 if (x > 5) { ... } else { ... }
@@ -59,7 +50,17 @@ s = glue(a: 10, b: 20);
 val = s.a;
 """
 
-SYSTEM_PROMPT_TEMPLATE = """
+TEST_SCENARIOS = [
+    "Arithmetic: Integer division and precedence logic with variables ({var_name}).",
+    "Loop: Sum of even numbers from 0 to {limit} using 'for (i in 0:{limit})'.",
+    "Logic: While loop calculating a sequence (e.g. n = n - 1) until 0.",
+    "Function: A simple recursive function (like factorial or sum) called with {limit}.",
+    "Structure: Create a struct using glue(), modify a field, and output it.",
+    "Conditionals: Nested if/else checking values of an integer expression.",
+    "Complex: A function that takes a struct field and returns an int."
+]
+
+PROMPT_TEMPLATE_GENERATION = """
 [INST] You are an Expert Compiler Tester for a C-like language called **ParaCL**.
 
 --- CRITICAL SEMANTICS ---

@@ -1,15 +1,14 @@
 import subprocess
 import time
-import re
 from typing import Tuple, Optional, Set
 
 import config
 from utils import logger, get_code_hash, clean_code
-from llm_client import generate_test_pair
+from llm_client import generate_fresh_test
 
 SEEN_HASHES: Set[str] = set()
 
-def load_existing_tests() -> None:
+def load_history() -> None:
     logger.info(f"Scanning {config.PCL_DIR} for history...")
 
     config.PCL_DIR.mkdir(parents=True, exist_ok=True)
@@ -19,8 +18,7 @@ def load_existing_tests() -> None:
     for filepath in files:
         try:
             content = filepath.read_text(encoding="utf-8")
-            clean_content = re.sub(r"//.*", "", content)
-
+            clean_content = clean_code(content)
             SEEN_HASHES.add(get_code_hash(clean_content))
         except Exception as e:
             logger.warning(f"Could not read {filepath}: {e}")
@@ -53,16 +51,13 @@ def run_compiler_check(pcl_path: config.Path) -> Tuple[int, str]:
     except FileNotFoundError:
         return -1, "Binary not found"
 
-def main() -> None:
-    load_existing_tests()
-    logger.info(f"Starting LLM test generator, using {config.MODEL}...")
-
+def run_generation_mode():
     success_count = 0
 
     for i in range(config.TOTAL_ATTEMPTS):
         logger.info(f"--- Iteration #{i} ---")
 
-        data = generate_test_pair(i)
+        data = generate_fresh_test(i)
         if not data:
             continue
 
@@ -121,6 +116,12 @@ def main() -> None:
             success_count += 1
 
     logger.info(f"Done. Added {success_count} tests.")
+
+def main() -> None:
+    load_history()
+    logger.info(f"Starting LLM Generator using {config.MODEL}...")
+
+    run_generation_mode()
 
 if __name__ == "__main__":
     main()
