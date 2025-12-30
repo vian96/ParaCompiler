@@ -20,6 +20,8 @@ public:
         std::string input_file;
         std::string output_binary;
         std::string custom_clang_path;
+        std::string custom_stdlib_path;
+        std::string opt_level = "-O2";
         bool dump_ast = false;
         bool print_ir = true;
     };
@@ -48,6 +50,11 @@ private:
             } else if (arg == "--clang-path") {
                 if (i + 1 < argc) opts.custom_clang_path = argv[++i];
                 else { std::cerr << "Error: --clang-path requires an argument\n"; return std::nullopt; }
+            } else if (arg == "--stdlib-path") {
+                if (i + 1 < argc) opts.custom_stdlib_path = argv[++i];
+                else { std::cerr << "Error: --stdlib-path requires an argument\n"; return std::nullopt; }
+            } else if (arg == "-O0" || arg == "-O1" || arg == "-O2" || arg == "-O3" || arg == "-Os" || arg == "-Oz") {
+                opts.opt_level = arg;
             } else if (arg.starts_with("-")) {
                 std::cerr << "Unknown option: " << arg << "\n";
                 return std::nullopt;
@@ -57,7 +64,7 @@ private:
         }
 
         if (opts.input_file.empty()) {
-            std::cerr << "Usage: paracl <input.pcl> [-o output] [--no-ir] [--dump-ast]\n";
+            std::cerr << "Usage: paracl <input.pcl> [-o output] [--no-ir] [--dump-ast] [-O<level>] [--stdlib-path <path>]\n";
             return std::nullopt;
         }
         return opts;
@@ -126,13 +133,13 @@ private:
             clang_cmd = env;
         }
 
-        auto lib_path = find_parastdlib();
+        auto lib_path = find_parastdlib(opts);
         if (!lib_path) {
-            std::cerr << "Error: parastdlib.a (static) not found. Build target 'parastdlib_static'.\n";
+            std::cerr << "Error: libtinyparastdlib.a (static) not found. Build target 'tiny_parastdlib' or use --stdlib-path.\n";
             return false;
         }
 
-        std::string cmd = clang_cmd + " " + ir_file + " -o " + opts.output_binary +
+        std::string cmd = clang_cmd + " " + opts.opt_level + " " + ir_file + " -o " + opts.output_binary +
                           " " + lib_path->string();
 
         // std::cerr << "[Driver] Executing: " << cmd << "\n";
@@ -146,7 +153,14 @@ private:
         return true;
     }
 
-    std::optional<fs::path> find_parastdlib() {
+    std::optional<fs::path> find_parastdlib(const Options& opts) {
+        if (!opts.custom_stdlib_path.empty()) {
+            fs::path p(opts.custom_stdlib_path);
+            if (fs::exists(p)) return p;
+            std::cerr << "Warning: Custom stdlib path not found: " << opts.custom_stdlib_path << "\n";
+            return std::nullopt;
+        }
+
         std::error_code ec;
         fs::path exe_path = fs::canonical("/proc/self/exe", ec);
         if (ec) exe_path = fs::current_path();
