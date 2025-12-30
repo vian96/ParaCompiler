@@ -220,31 +220,38 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     // TODO: add dynamic cast checks to input and output nodes
     void visit(AST::Input &node) override {
         size_t bit_width = node.type->get_width();
-        llvm::AllocaInst *buffer =
-            create_entry_block_alloca(llvm::Type::getIntNTy(ctx, bit_width));
 
-        // pcl_input_int__(ptr %buffer, i32 %width)
+        unsigned num_words = (bit_width + 63) / 64;
+
+        llvm::Type *i64_ty = builder.getInt64Ty();
+        llvm::ArrayType *arr_ty = llvm::ArrayType::get(i64_ty, num_words);
+        llvm::AllocaInst *buffer = create_entry_block_alloca(arr_ty);
+
         llvm::Function *callee = module.getFunction("pcl_input_int__");
-        llvm::Value *width_val =
-            llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), bit_width);
+        llvm::Value *width_val = builder.getInt32(bit_width);
         builder.CreateCall(callee, {buffer, width_val});
 
-        last_value = builder.CreateLoad(llvm::Type::getIntNTy(ctx, bit_width), buffer,
-                                        "input_val");
+        last_value = builder.CreateLoad(builder.getIntNTy(bit_width), buffer, "input_val");
     }
 
     void visit(AST::Print &node) override {
         node.expr->accept(*this);
+        llvm::Value *val_to_print = get_last_value();
+
         size_t bit_width = node.expr->type->get_width();
-        llvm::AllocaInst *buffer =
-            create_entry_block_alloca(llvm::Type::getIntNTy(ctx, bit_width));
+        unsigned num_words = (bit_width + 63) / 64;
 
-        builder.CreateStore(get_last_value(), buffer);
+        llvm::Type *i64_ty = builder.getInt64Ty();
+        llvm::ArrayType *arr_ty = llvm::ArrayType::get(i64_ty, num_words);
+        llvm::AllocaInst *buffer = create_entry_block_alloca(arr_ty);
 
-        // pcl_output_int__(ptr %buffer, i32 %width)
+        llvm::Type *storage_type = builder.getIntNTy(num_words * 64);
+        llvm::Value *extended_val = builder.CreateZExt(val_to_print, storage_type);
+
+        builder.CreateStore(extended_val, buffer);
+
         llvm::Function *callee = module.getFunction("pcl_output_int__");
-        llvm::Value *width_val =
-            llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), bit_width);
+        llvm::Value *width_val = builder.getInt32(bit_width);
         builder.CreateCall(callee, {buffer, width_val});
     }
 
