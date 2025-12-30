@@ -54,6 +54,8 @@ set(MODULE_SOURCES
     llvm_emitter.cppm
     antlr_parser.cppm
     compiler.cppm
+    driver.cppm
+    paracompiler.cppm
 )
 
 add_library(paracl_core STATIC ${CORE_HEADERS})
@@ -111,3 +113,6 @@ target_compile_options(paracl PRIVATE -frtti)
 add_library(parastdlib SHARED parastdlib.cpp)
 target_link_libraries(parastdlib PRIVATE ${LLVM_LINK_LIBS} ${LLVM_SYSTEM_LIBS})
 set_target_properties(parastdlib PROPERTIES OUTPUT_NAME "parastdlib")
+
+add_library(tiny_parastdlib STATIC tiny_parastdlib.cpp)
+set_target_properties(tiny_parastdlib PROPERTIES OUTPUT_NAME "tinyparastdlib")

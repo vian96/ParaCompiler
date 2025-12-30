@@ -43,7 +43,7 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
 
     llvm::Function *func() { return builder.GetInsertBlock()->getParent(); }
 
-    void print() { module.print(llvm::outs(), nullptr); }
+    void print(llvm::raw_ostream &os = llvm::outs()) { module.print(os, nullptr); }
 
     llvm::Value *get_last_value() {
         if (!last_value)
@@ -437,5 +437,15 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
         last_value = f;
     }
 };
+
+}  // namespace ParaCompiler::LLVMEmitter
+
+export namespace ParaCompiler::LLVMEmitter {
+
+void generate_llvm_ir(AST::Program &ast, Types::TypeManager &tm, llvm::raw_ostream &os) {
+    LLVMEmitterVisitor emitter(tm);
+    emitter.visit(ast);
+    emitter.print(os);
+}
 
 }  // namespace ParaCompiler::LLVMEmitter
