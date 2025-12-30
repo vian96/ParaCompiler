@@ -1,0 +1,11 @@
+// RUN: %paracl %s > %t.ll
+// RUN: echo "0" | %lli -load=%lib %t.ll | FileCheck %s
+
+canary : int(32) = -559038737;
+padding : int(32) = 12345;
+
+val = input(0);
+
+output(0, canary);
+
+// CHECK: -559038737
