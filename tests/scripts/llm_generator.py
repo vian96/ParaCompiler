@@ -12,7 +12,7 @@ from rich.logging import RichHandler
 from typing import Optional, Dict, Any, Tuple, Set
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL = "codestral:22b"
+MODEL = "qwen2.5-coder:14b"
 COMPILER_BIN = Path("build/src/paracl")
 GRAMMAR_FILE = Path("src/grammar/ParaCL.g4")
 
