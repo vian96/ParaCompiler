@@ -36,6 +36,8 @@ public:
     }
 
 private:
+    static constexpr std::string_view STDLIB_NAME = "libtinyparastdlib.a";
+
     std::optional<Options> parse_args(int argc, char* argv[]) {
         Options opts;
         for (int i = 1; i < argc; ++i) {
@@ -135,7 +137,7 @@ private:
 
         auto lib_path = find_parastdlib(opts);
         if (!lib_path) {
-            std::cerr << "Error: libtinyparastdlib.a (static) not found. Build target 'tiny_parastdlib' or use --stdlib-path.\n";
+            std::cerr << "Error: " << STDLIB_NAME << " not found. Build target 'parastdlib_static' or use --stdlib-path.\n";
             return false;
         }
 
@@ -166,16 +168,16 @@ private:
         if (ec) exe_path = fs::current_path();
         else exe_path = exe_path.parent_path();
 
-        fs::path p1 = exe_path / "libtinyparastdlib.a";
+        fs::path p1 = exe_path / STDLIB_NAME;
         if (fs::exists(p1)) return p1;
 
-        fs::path p2 = exe_path.parent_path() / "src" / "libtinyparastdlib.a";
+        fs::path p2 = exe_path.parent_path() / "src" / STDLIB_NAME;
         if (fs::exists(p2)) return p2;
 
-        fs::path p3 = exe_path / "src" / "libtinyparastdlib.a";
+        fs::path p3 = exe_path / "src" / STDLIB_NAME;
         if (fs::exists(p3)) return p3;
 
-        if (fs::exists("libtinyparastdlib.a")) return "libtinyparastdlib.a";
+        if (fs::exists(STDLIB_NAME)) return STDLIB_NAME;
 
         return std::nullopt;
     }
