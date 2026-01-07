@@ -43,7 +43,7 @@ output(0, mixed_res);
 // CHECK: 225
 
 f0 : (asfasga) = { v3 = asfasga + 1; v3 * v3; };
-v7 = f0(2); // but not f0(2, 3)
+v7 = f0(2);  // but not f0(2, 3)
 
 f1 : (x) = { v3 = x + 1; v3 * v3; };  // x is generic
 f2 : (x, y) = { v3 = x + y; v3 * v3; };  // both generic
