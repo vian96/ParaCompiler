@@ -245,10 +245,13 @@ struct TypeChecker : Visitor::DefaultVisitor {
 
             func_id->type = func_id->sym->type;
             final_func_type = dynamic_cast<const FuncType *>(func_id->sym->type);
+            node.func =
+                make_conversion_node_or_propagate(std::move(node.func), func_id->type);
         } else {
             node.func->accept(*this);
+                        const Types::Type* target_type = node.func->type;
             node.func =
-                make_conversion_node_or_propagate(std::move(node.func), node.func->type);
+                make_conversion_node_or_propagate(std::move(node.func), target_type);
             final_func_type = dynamic_cast<const FuncType *>(node.func->type);
         }
 
