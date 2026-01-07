@@ -1,0 +1,68 @@
+// RUN: %paracl %s > %t.ll
+// RUN: %lli -load=%lib %t.ll | FileCheck %s
+
+square : (x) = {
+    return x * x;
+};
+
+add : (a, b) = a + b;
+
+get_val : (s) = s.val;
+
+v_int : int = 5;
+res_int = square(v_int);
+output(0, res_int); // CHECK: 25
+v_6: int(6) = 20;
+// cuts 6 bits
+output(0, square(v_6)); // CHECK: 16
+
+
+v_short : int(16) = 10;
+res_short = square(v_short);
+output(0, res_short); // CHECK: 100
+
+
+s1 = glue(42:val,1: id);
+s2 = glue(0:name, 99:val);
+
+out_s1 = get_val(s1);
+output(0, out_s1); // CHECK: 42
+
+out_s2 = get_val(s2);
+output(0, out_s2); // CHECK: 99
+
+
+mixed_res = square(add(v_int, v_short)); // (5 + 10)^2 = 225
+output(0, mixed_res); // CHECK: 225
+
+f0 : (asfasga) = { v3 = asfasga + 1; v3 * v3; };
+v7 = f0(2); // but not f0(2, 3)
+
+f1 : (x) = { v3 = x + 1; v3 * v3; };  // x is generic
+f2 : (x, y) = { v3 = x + y; v3 * v3; }; // both generic
+
+f4 : (x) = { if (x < 2) return 1; x * (x - 1); };
+f5 : (x) = x * x;
+f6 : (x) = { x * x; };
+f7 : (x) = { return x * x; };
+
+b1: int(10) = 10;
+b2: int(2) = 2;
+b3: int(3) = 3;
+b4: int(4) = 4;
+b5: int(5) = 5;
+b6: int(6) = 6;
+b7: int(7) = 7;
+
+ans1 = f1(b1) ;
+output(0, ans1); // CHECK: 121
+ans2 = f2(b2, b2) ;
+output(0, ans2);  // CHECK: 0
+ans4 = f4(b4) ;
+output(0, ans4);  // CHECK: -4
+ans5 = f5(b5) ;
+output(0, ans5);  // CHECK: -7
+ans6 = f6(b6) ;
+output(0, ans6);  // CHECK: -28
+ans7 = f7(b7) ;
+output(0, ans7);  // CHECK: 49
