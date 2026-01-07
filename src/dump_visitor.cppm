@@ -1,9 +1,8 @@
 module;
 
-#include <iostream>
-#include <memory>
-
 export module ParaCompiler:DumpVisitor;
+
+import std;
 
 import :AST;
 import :Symbol;

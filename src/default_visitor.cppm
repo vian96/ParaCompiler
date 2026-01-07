@@ -1,8 +1,8 @@
 module;
 
-#include <vector>
-
 export module ParaCompiler:DefaultVisitor;
+
+import std;
 
 import :AST;
 import :Visitor;

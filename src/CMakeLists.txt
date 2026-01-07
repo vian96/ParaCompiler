@@ -25,11 +25,19 @@ add_custom_command(
 add_library(paracl_parser STATIC ${ANTLR_OUTPUTS})
 target_include_directories(paracl_parser PUBLIC ${GEN_DIR})
 
-target_include_directories(paracl_parser PUBLIC
-    "${WORKSPACE_ROOT}/external/antlr4/runtime/Cpp/runtime/src"
+find_path(ANTLR4_INCLUDE_DIR "antlr4-runtime.h"
+    PATH_SUFFIXES "antlr4-runtime"
+    DOC "Path to ANTLR4 runtime headers"
 )
 
-target_link_libraries(paracl_parser PUBLIC antlr4_static)
+if(ANTLR4_INCLUDE_DIR)
+    message(STATUS "Found ANTLR headers manually: ${ANTLR4_INCLUDE_DIR}")
+    target_include_directories(paracl_parser SYSTEM PUBLIC ${ANTLR4_INCLUDE_DIR})
+else()
+    message(FATAL_ERROR "Could not find antlr4-runtime.h. Check CMAKE_PREFIX_PATH.")
+endif()
+
+target_link_libraries(paracl_parser PUBLIC antlr4_shared)
 
 target_compile_options(paracl_parser PRIVATE -frtti)
 
@@ -54,6 +62,7 @@ target_sources(paracl_core
     PUBLIC
     FILE_SET CXX_MODULES FILES ${MODULE_SOURCES}
 )
+set_property(TARGET paracl_core PROPERTY CXX_MODULE_STD ON)
 
 target_include_directories(paracl_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -65,7 +74,7 @@ if(LLVM_CONFIG_PATH)
     message(STATUS "Found llvm-config: ${LLVM_CONFIG_PATH}")
 
     execute_process(
-        COMMAND ${LLVM_CONFIG_PATH} --link-shared --libs core support irreader target native
+        COMMAND ${LLVM_CONFIG_PATH} --link-static --libs core support irreader target native
         OUTPUT_VARIABLE LLVM_LINK_LIBS
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
@@ -73,19 +82,32 @@ if(LLVM_CONFIG_PATH)
     string(REPLACE "\n" " " LLVM_LINK_LIBS "${LLVM_LINK_LIBS}")
     string(STRIP "${LLVM_LINK_LIBS}" LLVM_LINK_LIBS)
 
-    message(STATUS "LLVM Link Flags: ${LLVM_LINK_LIBS}")
+    execute_process(
+        COMMAND ${LLVM_CONFIG_PATH} --link-static --system-libs
+        OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    string(REPLACE "\n" " " LLVM_SYSTEM_LIBS "${LLVM_SYSTEM_LIBS}")
+
+    message(STATUS "LLVM Link Flags: ${LLVM_LINK_LIBS} ${LLVM_SYSTEM_LIBS}")
 else()
     message(FATAL_ERROR "llvm-config not found! Cannot determine link flags.")
 endif()
 
-target_link_libraries(paracl_core PUBLIC ${LLVM_LINK_LIBS})
+target_link_libraries(paracl_core
+    PUBLIC
+    paracl_parser
+    ${LLVM_LINK_LIBS}
+    ${LLVM_SYSTEM_LIBS}
+)
 
 target_compile_options(paracl_core PRIVATE -frtti)
 
 add_executable(paracl main.cpp)
 target_link_libraries(paracl PRIVATE paracl_core)
+set_property(TARGET paracl PROPERTY CXX_MODULE_STD ON)
 target_compile_options(paracl PRIVATE -frtti)
 
 add_library(parastdlib SHARED parastdlib.cpp)
-target_link_libraries(parastdlib PRIVATE ${LLVM_LINK_LIBS})
+target_link_libraries(parastdlib PRIVATE ${LLVM_LINK_LIBS} ${LLVM_SYSTEM_LIBS})
 set_target_properties(parastdlib PROPERTIES OUTPUT_NAME "parastdlib")
