@@ -222,21 +222,21 @@ struct TypeChecker : Visitor::DefaultVisitor {
             !!sym && ((!sym->type && sym->def) ||
                       (sym->type && sym->def && manager.is_generic_type(sym->type)));
 
+        // handle arg expressions first
+        std::vector<const Type *> arg_types;
+        for (auto &arg : node.args) {
+            arg->accept(*this);
+            if (is_generic && arg->type == manager.get_flexiblet())
+                arg =
+                    make_conversion_node_or_propagate(std::move(arg), manager.get_intt());
+
+            arg_types.push_back(arg->type);
+        }
+
         const Types::FuncType *final_func_type = nullptr;
 
         // handle template call
         if (is_generic) {
-            // handle arg expressions first
-            std::vector<const Type *> arg_types;
-            for (auto &arg : node.args) {
-                arg->accept(*this);
-                if (arg->type == manager.get_flexiblet())
-                    arg =
-                        make_conversion_node_or_propagate(std::move(arg), manager.get_intt());
-
-                arg_types.push_back(arg->type);
-            }
-
             if (auto it = manager.instantiations.find({sym, arg_types});
                 it != manager.instantiations.end())
                 func_id->sym = it->second;
