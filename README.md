@@ -15,7 +15,8 @@ repo init -u https://github.com/nerett/paracompiler-manifest -b main
 repo sync
 make -C tools/ pull-toolchain
 cd paracl/
-make rebuild test
+make rebuild
+# make test  # if you have python & required libs
 ```
 
 ### Containerized
