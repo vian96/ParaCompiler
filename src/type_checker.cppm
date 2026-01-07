@@ -9,15 +9,79 @@ import :Symbol;
 import :Visitor;
 import :Types;
 import :DefaultVisitor;
+import :DeepCopy;
 
 namespace ParaCompiler::Types {
 
+// Scans all return statements to find the common type
+struct ReturnTypeScanner : public Visitor::DefaultVisitor {
+    Types::TypeManager &manager;
+    const Type *common_type = nullptr;
+
+    ReturnTypeScanner(Types::TypeManager &m) : manager(m) {}
+
+    using DefaultVisitor::visit;
+
+    void add_type(const Type *t) {
+        if (!t) return;
+        if (t == manager.get_flexiblet()) return;
+        if (!common_type) {
+            common_type = t;
+            return;
+        }
+        common_type = manager.get_common_type(common_type, t);
+    }
+
+    void visit(AST::RetStmt &node) override {
+        if (node.expr) add_type(node.expr->type);
+    }
+
+    // may be bad to visit nested functions because they mess up return type of our
+    // function with their returns. but we just don't visit assignments of functions
+    void visit(AST::FuncBody &node) override {
+        if (node.body) node.body->accept(*this);
+    }
+
+    // Stop recursion at assignments that define new functions
+    void visit(AST::Assignment &node) override {
+        node.left->accept(*this);
+        if (node.val && !dynamic_cast<AST::FuncBody *>(node.val.get()))
+            node.val->accept(*this);
+    }
+};
+
+struct TypeChecker;
+
+struct ReturnTypeEnforcer : public Visitor::DefaultVisitor {
+    TypeChecker &tc;
+    const Type *target_type;
+
+    ReturnTypeEnforcer(Types::TypeChecker &tc_ref, const Type *t)
+        : tc(tc_ref), target_type(t) {}
+
+    using DefaultVisitor::visit;
+
+    // uses incomplete typeChecker
+    void visit(AST::RetStmt &node) override;
+
+    // Stop recursion at assignments that define new functions
+    void visit(AST::Assignment &node) override {
+        if (node.val && !dynamic_cast<AST::FuncBody *>(node.val.get()))
+            node.val->accept(*this);
+    }
+};
+
 struct TypeChecker : Visitor::DefaultVisitor {
     TypeManager &manager;
+    std::vector<std::unique_ptr<AST::Statement>> template_instantiations;
+    Symbols::Symbol::ArenaType &symbol_arena;
 
-    TypeChecker(TypeManager &manager_) : manager(manager_) {}
+    TypeChecker(TypeManager &m, Symbols::Symbol::ArenaType &s_arena)
+        : manager(m), symbol_arena(s_arena) {}
 
     const Types::Type *get_from_typespec(AST::TypeSpec *spec) {
+        if (!spec) return manager.get_flexiblet();
+
         if (spec->is_int)
             return manager.get_intt(spec->int_width);
         else if (spec->is_func) {
@@ -54,6 +118,18 @@ struct TypeChecker : Visitor::DefaultVisitor {
         return std::make_unique<AST::Conversion>(std::move(expr), t);
     }
 
+    void visit(AST::Program &p) override {
+        DefaultVisitor::visit(p);
+
+        // can only add new statements after iterating over them is finished
+        if (!template_instantiations.empty()) {
+            p.statements.insert(p.statements.begin(),
+                                std::make_move_iterator(template_instantiations.begin()),
+                                std::make_move_iterator(template_instantiations.end()));
+            template_instantiations.clear();
+        }
+    }
+
     void visit(AST::Print &node) override {
         node.expr->accept(*this);
         auto res_type = (node.expr->type == manager.get_flexiblet() ||
@@ -83,6 +159,17 @@ struct TypeChecker : Visitor::DefaultVisitor {
         if (node.typeSpec)
             node.left->type = id->type = id->sym->type =
                 get_from_typespec(node.typeSpec.get());
+
+        if (node.typeSpec && node.typeSpec->is_func) {
+            // ignore generics because they're compiled at call site
+            if (manager.has_generic_args(id->sym->type)) return;
+
+            // regular func
+            if (auto func_body = dynamic_cast<AST::FuncBody *>(node.val.get())) {
+                finalize_function(func_body, id->sym);
+                return;
+            }
+        }
 
         if (node.val) node.val->accept(*this);
         if (auto ft = dynamic_cast<const FuncType *>(id->type)) node.val->type = ft;
@@ -128,24 +215,151 @@ struct TypeChecker : Visitor::DefaultVisitor {
         node.val = make_conversion_node_or_propagate(std::move(node.val), comt);
     }
 
-    virtual void visit(AST::Call &node) override {
-        node.func->accept(*this);
-        // lval->rval conv
-        auto leftt = node.func->type;
-        node.func = make_conversion_node_or_propagate(std::move(node.func), leftt);
-        auto ft = dynamic_cast<const FuncType *>(node.func->type);
-        if (!ft)
+    void visit(AST::Call &node) override {
+        auto *func_id = dynamic_cast<AST::Id *>(node.func.get());
+        Symbols::Symbol *sym = func_id ? func_id->sym : nullptr;
+        bool is_generic =
+            !!sym && ((!sym->type && sym->def) ||
+                      (sym->type && sym->def && manager.is_generic_type(sym->type)));
+
+        // handle arg expressions first
+        std::vector<const Type *> arg_types;
+        for (auto &arg : node.args) {
+            arg->accept(*this);
+            if (is_generic && arg->type == manager.get_flexiblet())
+                arg =
+                    make_conversion_node_or_propagate(std::move(arg), manager.get_intt());
+
+            arg_types.push_back(arg->type);
+        }
+
+        const Types::FuncType *final_func_type = nullptr;
+
+        // handle template call
+        if (is_generic) {
+            if (auto it = manager.instantiations.find({sym, arg_types});
+                it != manager.instantiations.end())
+                func_id->sym = it->second;
+            else
+                instantiate_generic(sym, arg_types, func_id);
+
+            func_id->type = func_id->sym->type;
+            final_func_type = dynamic_cast<const FuncType *>(func_id->sym->type);
+            node.func =
+                make_conversion_node_or_propagate(std::move(node.func), func_id->type);
+        } else {
+            node.func->accept(*this);
+                        const Types::Type* target_type = node.func->type;
+            node.func =
+                make_conversion_node_or_propagate(std::move(node.func), target_type);
+            final_func_type = dynamic_cast<const FuncType *>(node.func->type);
+        }
+
+        if (!final_func_type)
             throw std::runtime_error("can only call functions but got " +
                                      Types::Type::ptr_to_str(node.func->type));
-        node.type = ft->res_type;
-        for (int i = 0; i < node.args.size(); i++) {
-            auto &arg = node.args[i];
-            if (arg) {
-                arg->accept(*this);
-                arg =
-                    make_conversion_node_or_propagate(std::move(arg), ft->args[i].second);
+
+        node.type = final_func_type->res_type;
+        if (node.args.size() != final_func_type->args.size())
+            throw std::runtime_error("Argument count mismatch");
+
+        // both lval->rval and regular conversions
+        for (size_t i = 0; i < node.args.size(); ++i)
+            node.args[i] = make_conversion_node_or_propagate(
+                std::move(node.args[i]), final_func_type->args[i].second);
+    }
+
+    // calculates correct return type if needed and makes conversion nodes.
+    // requires that at least some func type was set to func_sym
+    void finalize_function(AST::FuncBody *body_node, Symbols::Symbol *func_sym) {
+        if (!body_node || !func_sym) return;
+
+        body_node->accept(*this);
+
+        const Types::FuncType *ft = dynamic_cast<const Types::FuncType *>(func_sym->type);
+        const Types::Type *target_type = ft ? ft->res_type : manager.get_flexiblet();
+
+        // deduce type
+        if (!target_type || target_type == manager.get_flexiblet()) {
+            ReturnTypeScanner scanner(manager);
+            body_node->accept(scanner);
+
+            target_type = scanner.common_type;
+
+            if (!target_type || target_type == manager.get_flexiblet())
+                target_type = manager.get_intt();
+
+            // set correct (calculated) type to symbol
+            if (ft) {
+                auto concrete_ft = manager.get_func_type(ft->args, target_type);
+                func_sym->type = concrete_ft;
+                body_node->type = concrete_ft;
             }
+        } else {
+            body_node->type = ft;
         }
+
+        ReturnTypeEnforcer enforcer(*this, target_type);
+        body_node->accept(enforcer);
+    }
+
+    void instantiate_generic(Symbols::Symbol *template_sym,
+                             const std::vector<const Type *> &arg_types,
+                             AST::Id *call_site_id) {
+        auto *def_stmt = dynamic_cast<AST::Assignment *>(template_sym->def);
+        if (!def_stmt) throw std::runtime_error("Generic def not found");
+
+        ::ParaCompiler::Visitor::DeepCopyVisitor copier;
+        std::unique_ptr<AST::Assignment> new_def = copier.copy(def_stmt);
+
+        std::string new_name = std::string(template_sym->name) + "." +
+                               std::to_string(std::hash<void *>{}(new_def.get()));
+        symbol_arena.emplace_back(new_name);
+        Symbols::Symbol *concrete_sym = &symbol_arena.back();
+
+        auto *left_id = static_cast<AST::Id *>(new_def->left.get());
+        if (!left_id)
+            throw std::runtime_error(
+                "an attempt to assign templated function to some expression");
+        // setting up correct fields
+        new_def->name = new_name;
+        left_id->val = new_name;
+        left_id->sym = concrete_sym;
+        concrete_sym->def = new_def.get();
+
+        Symbols::NameResolution resolver(symbol_arena);
+        resolver.scopes.emplace_back();
+        resolver.scopes.back().emplace(new_name, concrete_sym);
+        new_def->accept(resolver);
+
+        if (!new_def->typeSpec || new_def->typeSpec->args.size() != arg_types.size())
+            throw std::runtime_error("Generic instantiation arg mismatch");
+
+        std::vector<std::pair<Symbols::Symbol *, const Type *>> concrete_args_vec;
+        for (size_t i = 0; i < arg_types.size(); ++i) {
+            auto &arg_pair = new_def->typeSpec->args[i];
+            Symbols::Symbol *arg_sym = arg_pair.first->sym;
+
+            arg_sym->type = arg_types[i];
+            concrete_args_vec.emplace_back(arg_sym, arg_types[i]);
+        }
+
+        auto *func_body = dynamic_cast<AST::FuncBody *>(new_def->val.get());
+        if (!func_body) throw std::runtime_error("Generic func has no body");
+
+        // don't know return type, but it'll be deduced later
+        auto *proto_type =
+            manager.get_func_type(concrete_args_vec, manager.get_flexiblet());
+        concrete_sym->type = proto_type;
+        new_def->val->type = proto_type;
+
+        finalize_function(func_body, concrete_sym);
+
+        call_site_id->sym = concrete_sym;
+        call_site_id->type = concrete_sym->type;
+
+        manager.instantiations[{template_sym, arg_types}] = concrete_sym;
+        template_instantiations.push_back(std::move(new_def));
     }
 
     void visit(AST::IfStmt &node) override {
@@ -272,16 +486,6 @@ struct TypeChecker : Visitor::DefaultVisitor {
         node.type = ltype->fields[it->second];
     }
 
-    void visit(AST::RetStmt &node) override {
-        node.expr->accept(*this);
-        const Type *rest = nullptr;
-        if (node.expr->type == manager.get_flexiblet())
-            rest = manager.get_intt();
-        else
-            rest = node.expr->type;
-        node.expr = make_conversion_node_or_propagate(std::move(node.expr), rest);
-    }
-
     void visit(AST::IndexExpr &node) override {
         node.left->accept(*this);
         auto ltype = dynamic_cast<const StructType *>(node.left->type);
@@ -294,5 +498,10 @@ struct TypeChecker : Visitor::DefaultVisitor {
         node.type = ltype->fields[node.ind];
     }
 };
+
+void ReturnTypeEnforcer::visit(AST::RetStmt &node) {
+    if (!node.expr) return;
+    node.expr = tc.make_conversion_node_or_propagate(std::move(node.expr), target_type);
+}
 
 }  // namespace ParaCompiler::Types

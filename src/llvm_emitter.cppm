@@ -148,6 +148,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     }
 
     void visit(AST::Assignment &node) override {
+        if (node.left->type && type_manager.is_generic_type(node.left->type)) return;
+
         node.left->accept(*this);
         auto alloca = get_last_value();
 
@@ -199,7 +201,8 @@ struct LLVMEmitterVisitor : public Visitor::DefaultVisitor {
     void visit(AST::Id &node) override {
         last_value = get_or_create_alloca(node.sym);
         if (!node.sym->type)
-            throw std::runtime_error("Node has unset type, most likely, variable was not initialized");
+            throw std::runtime_error(
+                "Node has unset type, most likely, variable was not initialized");
     }
 
     void visit(AST::LValToRVal &node) override {

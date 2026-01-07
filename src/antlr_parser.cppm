@@ -176,12 +176,18 @@ class TreeBuilder : public ParaCLBaseVisitor {
         } else {
             node->is_int = false;
             node->is_func = true;
-            for (int i = 0; i < ctx->ID().size(); i++)
+            for (int i = 0; i < ctx->ID().size(); i++) {
+                std::unique_ptr<AST::TypeSpec> arg_spec = nullptr;
+                if (ctx->typeSpec(i))
+                    arg_spec = take<AST::TypeSpec>(visit(ctx->typeSpec(i)));
+
                 node->args.emplace_back(
                     std::make_unique<AST::Id>(std::string(ctx->ID(i)->getText())),
-                    take<AST::TypeSpec>(visit(ctx->typeSpec(i))));
-            node->ret_spec =
-                take<AST::TypeSpec>(visit(ctx->typeSpec(ctx->typeSpec().size() - 1)));
+                    std::move(arg_spec));
+            }
+
+            if (ctx->typeSpec().size() > ctx->ID().size())
+                node->ret_spec = take<AST::TypeSpec>(visit(ctx->typeSpec().back()));
         }
         return static_cast<AST::Node *>(node);
     }

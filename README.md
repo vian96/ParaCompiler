@@ -9,15 +9,15 @@ We went a bit crazy with modern C++, so under the hood, it uses C++ modules; bec
 - variable width integers (any width)
 - structs (except for explicit type specification, only using glue)
 - functions
+- templates
 
 **In progress:**
 - arrays, vectors
-- templates
 - floats
 - repeat, bind, methods
 
 ***Note:***
-- integer literals types are taken from operands that they're used with. e.g. if you add a big number with int(8), this number will be truncated
+- integer literals types are taken from operands that they're used with. e.g. if you add a big number with int(8), this number will be truncated. Type is propagated only horizontally, i.e. adding two numbers of different width will convert their types but assigning them to a bigger number will only convert result, not operands
 - integers can only be extended, not truncated (implicit conversion to bool exists though)
 - && and || are actually bit-wise
 - shadowing variables from outer scopes is not supported because ParaCL grammatic is too ambigious. On the other hand, you cannot access any external variable from function (therefore, you cannot write recursive functions)

@@ -105,6 +105,19 @@ struct TypeManager {
         FuncType *>
         funcs;
 
+    using InstantiationKey = std::pair<Symbols::Symbol *, std::vector<const Type *>>;
+
+    struct InstantiationHash {
+        std::size_t operator()(const InstantiationKey &k) const {
+            std::size_t h = std::hash<Symbols::Symbol *>{}(k.first);
+            for (auto *t : k.second) h ^= std::hash<const Type *>{}(t);
+            return h;
+        }
+    };
+
+    std::unordered_map<InstantiationKey, Symbols::Symbol *, InstantiationHash>
+        instantiations;
+
     BoolType *boolt = nullptr;
     FlexibleType *flext = nullptr;
 
@@ -165,6 +178,27 @@ struct TypeManager {
         auto funcp = funct.get();
         types.push_back(std::move(funct));
         return funcp;
+    }
+
+    bool is_generic_type(const Types::Type *t) {
+        if (!t) return false;
+        if (t == get_flexiblet()) return true;
+        if (auto ft = dynamic_cast<const Types::FuncType *>(t)) {
+            if (is_generic_type(ft->res_type)) return true;
+            for (auto &arg : ft->args)
+                if (is_generic_type(arg.second)) return true;
+        }
+        return false;
+    }
+
+    // is needed because regular function can have unspecified ret type
+    bool has_generic_args(const Types::Type *t) {
+        if (auto ft = dynamic_cast<const Types::FuncType *>(t)) {
+            for (auto &arg : ft->args) {
+                if (is_generic_type(arg.second)) return true;
+            }
+        }
+        return false;
     }
 };
 
