@@ -3,6 +3,34 @@ This is the ParaCL compiler. It's a project we built to compile a custom C-like 
 
 We went a bit crazy with modern C++, so under the hood, it uses C++ modules; because of this, the build requirements are pretty strict.
 
+## TL;DR Quick Start
+Execute commands below to download everything, compile and run tests.
+
+### Native
+Assuming you have all [requirements](#requirements) satisfied:
+
+```bash
+mkdir paracl && cd paracl
+repo init -u https://github.com/nerett/paracompiler-manifest -b main
+repo sync
+make -C tools/ pull-toolchain
+cd paracl/
+make rebuild
+# make test  # if you have python & required libs
+```
+
+### Containerized
+Assuming you have `docker`/`podman` installed:
+
+```bash
+mkdir paracl && cd paracl
+repo init -u https://github.com/nerett/paracompiler-manifest -b main
+repo sync
+make -C tools/ shell-ci
+# Now you're inside a container
+make rebuild test
+```
+
 ## Implementation status
 **Done:**
 - control flow
@@ -76,7 +104,8 @@ make build-toolchain
 Besides LLVM & ANTLR-runtime toolchain you need a Linux environment with (or use our container image):
 
 - Stable & fast internet connection
-- CMake 4.1.0+ (we use 4.2.0; 3.30+ can also be ok, but you'll need to set magic UUID yourself)
+- Google's repo tool
+- CMake 4.1.0+ (we use 4.2.0; 3.30+ can also be ok, but you'll need to set magic UUID for enabling experimental `import std` support yourself)
 - Ninja 1.11+
 - Python 3.10+ (for generating and running tests)
 - Python dependencies; run:
