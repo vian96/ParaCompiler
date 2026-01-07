@@ -3,6 +3,20 @@ This is the ParaCL compiler. It's a project we built to compile a custom C-like 
 
 We went a bit crazy with modern C++, so under the hood, it uses C++ modules; because of this, the build requirements are pretty strict.
 
+## TLDR to build project as fast as possible
+
+If you don't care about details, you only need Make, CMake 4.2.0 (other versions require its own magic `import std` constant), Ninja 1.11+, Java and Repo. To download everything, compile and run tests, execute these commands:
+
+```bash
+mkdir paracl && cd paracl
+repo init -u https://github.com/nerett/paracompiler-manifest -b main
+repo sync
+cd tools
+make pull-toolchain
+cd ../paracl
+make rebuild test
+```
+
 ## Implementation status
 **Done:**
 - control flow
