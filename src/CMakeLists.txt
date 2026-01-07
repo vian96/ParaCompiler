@@ -45,6 +45,7 @@ set(CORE_HEADERS)
 
 set(MODULE_SOURCES
     types.cppm
+    deepcopy.cppm
     symbol.cppm
     visitor.cppm
     ast.cppm

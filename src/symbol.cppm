@@ -12,8 +12,7 @@ import :Visitor;
 namespace ParaCompiler::Symbols {
 
 struct Symbol {
-    // i hope nothing breaks but std::string too heavy?
-    using NameType = std::string_view;
+    using NameType = std::string;
 
     using ArenaType = std::deque<Symbols::Symbol>;
     NameType name;
@@ -31,13 +30,13 @@ struct NameResolution : public Visitor::DefaultVisitor {
     // allows adding new symbols
     bool inside_declaration_left = false;
 
-    Symbol *add_or_get_symbol(std::string_view name) {
+    // need to convert to string to access map, so just accept str
+    Symbol *add_or_get_symbol(const Symbol::NameType &name) {
         for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
             if (auto sym = it->find(name); sym != it->end()) return sym->second;
 
         if (!inside_declaration_left)
-            throw std::runtime_error("an attempt to use undeclared var" +
-                                     std::string(name));
+            throw std::runtime_error("an attempt to use undeclared var" + name);
         symbols.emplace_back(name);
         scopes.back().emplace(name, &symbols.back());
         return &symbols.back();
@@ -61,6 +60,9 @@ struct NameResolution : public Visitor::DefaultVisitor {
     void visit(AST::Assignment &node) override {
         inside_declaration_left = true;
         node.left->accept(*this);
+
+        if (auto *id = dynamic_cast<AST::Id *>(node.left.get()))
+            if (id->sym) id->sym->def = &node;
 
         std::vector<Scope> prev_scopes;
         if (node.typeSpec && node.typeSpec->is_func) {

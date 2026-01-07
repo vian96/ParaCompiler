@@ -35,7 +35,7 @@ struct Compiler {
         Symbols::NameResolution name_res(symbols);
         name_res.visit(*ast);
 
-        Types::TypeChecker typecheck(type_manager);
+        Types::TypeChecker typecheck(type_manager, symbols);
         ast->accept(typecheck);
 
         LLVMEmitter::LLVMEmitterVisitor ir_emit(type_manager);
