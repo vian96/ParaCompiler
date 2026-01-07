@@ -1,0 +1,20 @@
+// RUN: %paracl %s > %t.ll
+// RUN: %lli -load=%lib %t.ll | FileCheck %s
+
+a : int = -13;
+b : int = 5;
+res1 : int = a / b;
+// C++/ParaCL: -2
+// Python: -3
+output(0, res1);
+
+// (-13 * 2 + 5) / 2
+// (-26 + 5) / 2
+// -21 / 2
+// C++/ParaCL: -10
+// Python: -11
+val : int = (a * 2 + b) / 2;
+output(0, val);
+
+// CHECK: -2
+// CHECK: -10

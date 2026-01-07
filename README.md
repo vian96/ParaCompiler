@@ -113,10 +113,12 @@ make test
 ```
 
 ### Generated tests
+Before running LLM test generator you can tweak model, its parameters, LLM API link and other generation settings in `tests/scripts/config.py`. For generating new tests you need OpenAI-compatible LLM API access. The simplest way is to run Ollama instance locally (refer to its wiki).
+
 Generate some new tests with:
 
 ```bash
-python tests/scripts/llm_generator.py
+python tests/scripts/main.py
 ```
 
 Run them:

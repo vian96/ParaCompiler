@@ -1,0 +1,19 @@
+// RUN: %paracl %s > %t.ll
+// RUN: %lli -load=%lib %t.ll | FileCheck %s
+// XFAIL: *
+
+// GCD
+gcd : (a: int, b: int) : int = {
+    if (a == b) return a;
+    if (a > b) return gcd(a - b, b);
+    return gcd(a, b - a);
+};
+
+res : int = gcd(36, 48);
+output(0, res);
+
+res2 : int = gcd(gcd(10, 20), 30);
+output(0, res2);
+
+// CHECK: 12
+// CHECK: 10
