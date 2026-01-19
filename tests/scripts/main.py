@@ -26,10 +26,27 @@ def load_history() -> None:
             logger.warning(f"Could not read {filepath}: {e}")
     logger.info(f"Loaded {len(SEEN_HASHES)} existing tests.")
 
+def sanitize_python_code(py_code: str) -> str:
+    """Fix common LLM hallucinations in Python code."""
+    lines = []
+    for line in py_code.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("//"):
+            line = line.replace("//", "#", 1)
+
+        if "output(" in line and "print(" not in line:
+            line = line.replace("output(0,", "print(")
+            line = line.replace("output(", "print(")
+
+        lines.append(line)
+    return "\n".join(lines)
+
 def run_oracle(python_code: str) -> Tuple[Optional[str], Optional[str]]:
+    cleaned_py_code = sanitize_python_code(python_code)
+
     try:
         proc = subprocess.run(
-            ["python3", "-c", python_code],
+            ["python3", "-c", cleaned_py_code],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,

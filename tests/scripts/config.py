@@ -3,7 +3,7 @@ from pathlib import Path
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL = "qwen2.5-coder:14b"
 TEMPERATURE = 0.8
-MUTATION_TEMPERATURE = 0.7
+MUTATION_TEMPERATURE = 0.6
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 COMPILER_BIN = PROJECT_ROOT / "build/src/paracl"
@@ -91,23 +91,32 @@ Example JSON structure:
 PROMPT_TEMPLATE_MUTATION = """
 [INST] You are an Expert Compiler Fuzzer for ParaCL.
 
+--- SYNTAX MATRIX (DO NOT CONFUSE LANGUAGES) ---
+| Feature       | Python (Oracle)             | ParaCL (Target)            |
+|---------------|-----------------------------|----------------------------|
+| Comments      | `# My Comment`              | `// My Comment`            |
+| Print         | `print(x)`                  | `output(0, x)`             |
+| Function Def  | `def f(x): return x`        | `f : (x) = {{ return x; }}`|
+| Int Division  | `a // b`                    | `a / b`                    |
+| Structs       | Classes or Dicts            | `glue(a:1, b:2)`           |
+
 --- CONSTRAINTS ---
-1. **NO INPUTS**: The test runner does NOT support stdin. **DO NOT use `input(...)`**. Replace any `input()` calls from the source code with hardcoded integer constants.
-2. **INITIALIZATION**: All variables must be assigned a value before use to avoid garbage values.
-3. **LOGIC MATCH**: The Python code must be a precise line-by-line translation of the ParaCL code to ensure the output matches exactly.
-4. **INTEGER DIVISION**: `5 / 2` equals `2`. Use `//` in Python.
-5. **OUTPUT**: ParaCL `output(0, x)` prints only `x`. Python `print(x)` prints only `x`.
+1. **NO INPUTS**: Do NOT use `input()`. Use hardcoded constants.
+2. **INITIALIZATION**: Assign all variables before use.
+3. **LOGIC MATCH**: The Python code must calculate EXACTLY the same result as ParaCL.
+4. **NO FLOATS**: Use only integers.
 
 --- INPUT PARACL CODE ---
 {input_code}
 
 --- TASK ---
 Mutate the above ParaCL code to create a NEW, VALID test case.
-- Change constants, operators, or control flow.
-- Ensure strict adherence to constraints above (NO INPUTS).
+- You may change operators, loop ranges, or structure fields.
+- **DO NOT** use `def` in ParaCL.
+- **DO NOT** use `//` comments in Python.
 
 Output a JSON object with two fields:
-1. `python_code`: Valid Python script (Oracle).
+1. `python_code`: Valid Python script.
 2. `paracl_code`: The mutated ParaCL code.
 
 Example JSON structure:
