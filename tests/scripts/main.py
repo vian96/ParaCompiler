@@ -2,11 +2,10 @@ import subprocess
 import time
 import argparse
 import random
-import re
 from typing import Tuple, Optional, Set
 
 import config
-from utils import logger, get_code_hash, clean_code
+from utils import logger, get_code_hash, clean_code, sanitize_python_code
 from llm_client import generate_fresh_test, mutate_existing_test
 
 SEEN_HASHES: Set[str] = set()
@@ -26,24 +25,6 @@ def load_history() -> None:
         except Exception as e:
             logger.warning(f"Could not read {filepath}: {e}")
     logger.info(f"Loaded {len(SEEN_HASHES)} existing tests.")
-
-def sanitize_python_code(py_code: str) -> str:
-    """Fix common LLM hallucinations in Python code."""
-    lines = []
-    for line in py_code.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("//"):
-            line = line.replace("//", "#", 1)
-
-        if "output(" in line and "print(" not in line:
-            line = line.replace("output(0,", "print(")
-            line = line.replace("output(", "print(")
-
-        if "print(" in line and "int(" not in line:
-            line = re.sub(r'print\s*\(([^"\').]+)\)', r'print(int(\1))', line)
-
-        lines.append(line)
-    return "\n".join(lines)
 
 def run_oracle(python_code: str) -> Tuple[Optional[str], Optional[str]]:
     cleaned_py_code = sanitize_python_code(python_code)

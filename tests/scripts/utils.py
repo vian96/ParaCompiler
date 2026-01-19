@@ -36,3 +36,21 @@ def get_random_var_name() -> str:
     prefix = random.choice(["v", "val", "res", "tmp", "cnt", "iter"])
     suffix = ''.join(random.choices(string.ascii_lowercase, k=2))
     return f"{prefix}_{suffix}"
+
+def sanitize_python_code(py_code: str) -> str:
+    """Fix common LLM hallucinations in Python code."""
+    lines = []
+    for line in py_code.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("//"):
+            line = line.replace("//", "#", 1)
+
+        if "output(" in line and "print(" not in line:
+            line = line.replace("output(0,", "print(")
+            line = line.replace("output(", "print(")
+
+        if "print(" in line and "int(" not in line:
+            line = re.sub(r'print\s*\(([^"\').]+)\)', r'print(int(\1))', line)
+
+        lines.append(line)
+    return "\n".join(lines)
