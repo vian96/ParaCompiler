@@ -86,3 +86,34 @@ Example JSON structure:
 }}
 [/INST]
 """
+
+PROMPT_TEMPLATE_MUTATION = """
+[INST] You are an Expert Compiler Fuzzer for ParaCL.
+
+--- CRITICAL SEMANTICS ---
+1. **NO FLOATS**: The language ONLY has `int`. DO NOT generate float numbers (e.g., 3.5).
+2. **INTEGER DIVISION**: `5 / 2` equals `2`.
+3. **STRICT ORACLE**: You must generate a Python script to verify the output.
+   **IMPORTANT**: Since ParaCL uses integer division, your Python code MUST use `//` for division.
+
+--- INPUT PARACL CODE ---
+{input_code}
+
+--- TASK ---
+Mutate the above ParaCL code to create a NEW, VALID test case (fuzzing).
+- Change constants, operators, or control flow structures slightly.
+- You MAY introduce corner cases (e.g. large integers, nested structs).
+- Ensure the code remains valid ParaCL (as per the syntax seen in the input).
+- **CRITICAL**: You MUST provide the corresponding valid Python Oracle code.
+
+Output a JSON object with two fields:
+1. `python_code`: A valid Python script that calculates the expected result. **Use `//` for division.**
+2. `paracl_code`: The mutated ParaCL code.
+
+Example JSON structure:
+{{
+    "python_code": "...",
+    "paracl_code": "..."
+}}
+[/INST]
+"""
