@@ -2,6 +2,7 @@ import subprocess
 import time
 import argparse
 import random
+import re
 from typing import Tuple, Optional, Set
 
 import config
@@ -37,6 +38,9 @@ def sanitize_python_code(py_code: str) -> str:
         if "output(" in line and "print(" not in line:
             line = line.replace("output(0,", "print(")
             line = line.replace("output(", "print(")
+
+        if "print(" in line and "int(" not in line:
+            line = re.sub(r'print\s*\(([^"\').]+)\)', r'print(int(\1))', line)
 
         lines.append(line)
     return "\n".join(lines)
@@ -107,6 +111,10 @@ def run_fuzzing_mode():
 
         if not py_code or not pcl_code:
             logger.warning("Empty code received")
+            continue
+
+        if "input(" in pcl_code or "input (" in pcl_code:
+            logger.warning("LLM violated NO INPUTS rule. Skipping to prevent garbage values.")
             continue
 
         pcl_code = "\n".join([line for line in pcl_code.splitlines() if "// CHECK" not in line])

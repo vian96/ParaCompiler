@@ -97,23 +97,27 @@ PROMPT_TEMPLATE_MUTATION = """
 | Comments      | `# My Comment`              | `// My Comment`            |
 | Print         | `print(x)`                  | `output(0, x)`             |
 | Function Def  | `def f(x): return x`        | `f : (x) = {{ return x; }}`|
-| Int Division  | `a // b`                    | `a / b`                    |
 | Structs       | Classes or Dicts            | `glue(a:1, b:2)`           |
+
+--- CRITICAL MATH RULES ---
+1. **DIVISION**: ParaCL uses C-style truncation (`-5 / 2 = -2`).
+   - Python `//` is floor division (`-5 // 2 = -3`). **DO NOT USE `//`**.
+   - **CORRECT PYTHON**: Use `int(a / b)`. Example: `int(-5 / 2)`.
+2. **NO FLOATS**: Python output must be explicitly cast to int: `print(int(result))`.
 
 --- CONSTRAINTS ---
 1. **NO INPUTS**: Do NOT use `input()`. Use hardcoded constants.
 2. **INITIALIZATION**: Assign all variables before use.
 3. **LOGIC MATCH**: The Python code must calculate EXACTLY the same result as ParaCL.
-4. **NO FLOATS**: Use only integers.
 
 --- INPUT PARACL CODE ---
 {input_code}
 
 --- TASK ---
 Mutate the above ParaCL code to create a NEW, VALID test case.
-- You may change operators, loop ranges, or structure fields.
+- Change operators, loop ranges, or structure fields.
 - **DO NOT** use `def` in ParaCL.
-- **DO NOT** use `//` comments in Python.
+- **DO NOT** use `//` in Python (use `int(a/b)`).
 
 Output a JSON object with two fields:
 1. `python_code`: Valid Python script.
