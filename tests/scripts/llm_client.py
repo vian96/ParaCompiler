@@ -41,4 +41,4 @@ def generate_fresh_test(index: int) -> Optional[Dict[str, Any]]:
 
 def mutate_existing_test(code_snippet: str) -> Optional[Dict[str, Any]]:
     prompt = config.PROMPT_TEMPLATE_MUTATION.format(input_code=code_snippet)
-    return query_ollama(prompt, config.TEMPERATURE)
+    return query_ollama(prompt, config.MUTATION_TEMPERATURE)

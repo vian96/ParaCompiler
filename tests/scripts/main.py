@@ -92,6 +92,8 @@ def run_fuzzing_mode():
             logger.warning("Empty code received")
             continue
 
+        pcl_code = "\n".join([line for line in pcl_code.splitlines() if "// CHECK" not in line])
+
         code_hash = get_code_hash(pcl_code)
         if code_hash in SEEN_HASHES:
             logger.info("Duplicate detected (skipping)")
@@ -100,6 +102,10 @@ def run_fuzzing_mode():
         expected_out, err = run_oracle(py_code)
         if err:
             logger.error(f"Oracle failed: {err}")
+            continue
+
+        if not expected_out:
+            logger.warning("Oracle produced empty output. Skipping.")
             continue
 
         base_name = f"fuzz_{int(time.time())}_{i}"
@@ -112,7 +118,7 @@ def run_fuzzing_mode():
 
         content.append(pcl_code)
 
-        if config.GENERATE_LIT_HEADERS and expected_out:
+        if config.GENERATE_LIT_HEADERS:
             content.append("\n")
             for line in expected_out.splitlines():
                 if line.strip():
@@ -158,6 +164,8 @@ def run_generation_mode():
             logger.warning("Empty code received")
             continue
 
+        pcl_code = "\n".join([line for line in pcl_code.splitlines() if "// CHECK" not in line])
+
         code_hash = get_code_hash(pcl_code)
         if code_hash in SEEN_HASHES:
             logger.info("Duplicate detected (skipping)")
@@ -166,6 +174,10 @@ def run_generation_mode():
         expected_out, err = run_oracle(py_code)
         if err:
             logger.error(f"Oracle failed: {err}")
+            continue
+
+        if not expected_out:
+            logger.warning("Oracle produced empty output. Skipping.")
             continue
 
         base_name = f"test_{int(time.time())}_{i}"
@@ -178,7 +190,7 @@ def run_generation_mode():
 
         content.append(pcl_code)
 
-        if config.GENERATE_LIT_HEADERS and expected_out:
+        if config.GENERATE_LIT_HEADERS:
             content.append("\n")
             for line in expected_out.splitlines():
                 if line.strip():

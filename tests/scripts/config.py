@@ -3,6 +3,7 @@ from pathlib import Path
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL = "qwen2.5-coder:14b"
 TEMPERATURE = 0.8
+MUTATION_TEMPERATURE = 0.7
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 COMPILER_BIN = PROJECT_ROOT / "build/src/paracl"
@@ -90,24 +91,23 @@ Example JSON structure:
 PROMPT_TEMPLATE_MUTATION = """
 [INST] You are an Expert Compiler Fuzzer for ParaCL.
 
---- CRITICAL SEMANTICS ---
-1. **NO FLOATS**: The language ONLY has `int`. DO NOT generate float numbers (e.g., 3.5).
-2. **INTEGER DIVISION**: `5 / 2` equals `2`.
-3. **STRICT ORACLE**: You must generate a Python script to verify the output.
-   **IMPORTANT**: Since ParaCL uses integer division, your Python code MUST use `//` for division.
+--- CONSTRAINTS ---
+1. **NO INPUTS**: The test runner does NOT support stdin. **DO NOT use `input(...)`**. Replace any `input()` calls from the source code with hardcoded integer constants.
+2. **INITIALIZATION**: All variables must be assigned a value before use to avoid garbage values.
+3. **LOGIC MATCH**: The Python code must be a precise line-by-line translation of the ParaCL code to ensure the output matches exactly.
+4. **INTEGER DIVISION**: `5 / 2` equals `2`. Use `//` in Python.
+5. **OUTPUT**: ParaCL `output(0, x)` prints only `x`. Python `print(x)` prints only `x`.
 
 --- INPUT PARACL CODE ---
 {input_code}
 
 --- TASK ---
-Mutate the above ParaCL code to create a NEW, VALID test case (fuzzing).
-- Change constants, operators, or control flow structures slightly.
-- You MAY introduce corner cases (e.g. large integers, nested structs).
-- Ensure the code remains valid ParaCL (as per the syntax seen in the input).
-- **CRITICAL**: You MUST provide the corresponding valid Python Oracle code.
+Mutate the above ParaCL code to create a NEW, VALID test case.
+- Change constants, operators, or control flow.
+- Ensure strict adherence to constraints above (NO INPUTS).
 
 Output a JSON object with two fields:
-1. `python_code`: A valid Python script that calculates the expected result. **Use `//` for division.**
+1. `python_code`: Valid Python script (Oracle).
 2. `paracl_code`: The mutated ParaCL code.
 
 Example JSON structure:
