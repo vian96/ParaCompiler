@@ -47,7 +47,7 @@ func : (x: int) : int = { return x * x; };
 res = func(5);
 
 // Structures
-s = glue(a: 10, b: 20);
+s = glue(10: a, 20: b);
 val = s.a;
 """
 
@@ -97,7 +97,7 @@ PROMPT_TEMPLATE_MUTATION = """
 | Comments      | `# My Comment`              | `// My Comment`            |
 | Print         | `print(x)`                  | `output(0, x)`             |
 | Function Def  | `def f(x): return x`        | `f : (x) = {{ return x; }}`|
-| Structs       | Classes or Dicts            | `glue(a:1, b:2)`           |
+| Structs       | Classes or Dicts            | `glue(1:a, 2:b)`           |
 
 --- CRITICAL MATH RULES ---
 1. **DIVISION**: ParaCL uses C-style truncation (`-5 / 2 = -2`).
@@ -109,6 +109,7 @@ PROMPT_TEMPLATE_MUTATION = """
 1. **NO INPUTS**: Do NOT use `input()`. Use hardcoded constants.
 2. **INITIALIZATION**: Assign all variables before use.
 3. **LOGIC MATCH**: The Python code must calculate EXACTLY the same result as ParaCL.
+4. **GLUE**: In ParaCL DO NOT write `name: value` like `glue(a:1, b:2)`, write `value: name` (`glue(1:a, 2:b)`) instead.
 
 --- INPUT PARACL CODE ---
 {input_code}
