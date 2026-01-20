@@ -1,5 +1,6 @@
-import lit.formats
 from pathlib import Path
+
+import lit.formats
 
 if 'config' not in globals():
     config = object()

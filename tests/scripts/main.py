@@ -1,14 +1,13 @@
-import subprocess
-import time
 import argparse
 import random
-from typing import Tuple, Optional, Set
+import subprocess
+import time
 
 import config
-from utils import logger, get_code_hash, clean_code, sanitize_python_code
 from llm_client import generate_fresh_test, mutate_existing_test
+from utils import clean_code, get_code_hash, logger, sanitize_python_code
 
-SEEN_HASHES: Set[str] = set()
+SEEN_HASHES: set[str] = set()
 
 def load_history() -> None:
     logger.info(f"Scanning {config.PCL_DIR} for history...")
@@ -26,14 +25,13 @@ def load_history() -> None:
             logger.warning(f"Could not read {filepath}: {e}")
     logger.info(f"Loaded {len(SEEN_HASHES)} existing tests.")
 
-def run_oracle(python_code: str) -> Tuple[Optional[str], Optional[str]]:
+def run_oracle(python_code: str) -> tuple[str | None, str | None]:
     cleaned_py_code = sanitize_python_code(python_code)
 
     try:
         proc = subprocess.run(
             ["python3", "-c", cleaned_py_code],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             timeout=config.ORACLE_TIMEOUT
         )
@@ -43,12 +41,11 @@ def run_oracle(python_code: str) -> Tuple[Optional[str], Optional[str]]:
     except Exception as e:
         return None, str(e)
 
-def run_compiler_check(pcl_path: config.Path) -> Tuple[int, str]:
+def run_compiler_check(pcl_path: config.Path) -> tuple[int, str]:
     try:
         proc = subprocess.run(
             [config.COMPILER_BIN, pcl_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True
         )
         return proc.returncode, proc.stderr
@@ -61,7 +58,6 @@ def get_mutation_sources() -> list[str]:
         for p in config.LIT_DIR.glob("*.pcl"):
             try:
                 content = p.read_text(encoding="utf-8")
-                # Filter out RUN/CHECK lines to avoid confusing LLM
                 lines = [line for line in content.splitlines()
                          if not line.strip().startswith("// RUN")
                          and not line.strip().startswith("// CHECK")]

@@ -1,0 +1,22 @@
+line-length = 140
+
+target-version = "py311"
+
+exclude = [
+    "build",
+    ".venv",
+    "venv",
+    "tests/gen",
+]
+
+[lint]
+select = ["F", "E", "W", "I", "B", "UP", "N"]
+ignore = ["E501"]
+
+[lint.isort]
+known-first-party = ["config", "utils", "llm_client"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
