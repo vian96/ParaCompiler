@@ -1,10 +1,11 @@
-import re
 import hashlib
-import random
-import string
 import logging
-from typing import Optional
+import random
+import re
+import string
+
 from rich.logging import RichHandler
+
 
 def setup_logging() -> logging.Logger:
     logging.basicConfig(
@@ -22,7 +23,7 @@ def get_code_hash(code_text: str) -> str:
     normalized = re.sub(r"\s+", "", code_text)
     return hashlib.md5(normalized.encode()).hexdigest()
 
-def clean_code(text: Optional[str]) -> str:
+def clean_code(text: str | None) -> str:
     """Extracts code from markdown blocks if present."""
     if not text:
         return ""
